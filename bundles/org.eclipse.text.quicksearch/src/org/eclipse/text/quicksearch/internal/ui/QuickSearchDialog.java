@@ -44,10 +44,20 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
+import org.eclipse.jface.text.source.CompositeRuler;
+import org.eclipse.jface.text.source.ISharedTextColors;
+import org.eclipse.jface.text.source.ISourceViewer;
+import org.eclipse.jface.text.source.LineNumberRulerColumn;
+import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ILazyContentProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -65,6 +75,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.ACC;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
+import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
@@ -79,10 +90,14 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Canvas;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -108,12 +123,15 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.SelectionStatusDialog;
+import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.handlers.IHandlerActivation;
 import org.eclipse.ui.handlers.IHandlerService;
 import org.eclipse.ui.internal.IWorkbenchGraphicConstants;
 import org.eclipse.ui.internal.WorkbenchImages;
 import org.eclipse.ui.internal.ide.IDEWorkbenchPlugin;
 import org.eclipse.ui.progress.UIJob;
+import org.eclipse.ui.texteditor.AbstractDecoratedTextEditorPreferenceConstants;
+import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
 import org.osgi.framework.FrameworkUtil;
 
 /**
@@ -353,6 +371,11 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private QuickTextSearcher searcher;
 
 	private StyledText details;
+	private final IPropertyChangeListener fPreferenceChangeListener;
+	private boolean fShowLineNumber = false;
+	private LineNumberRulerColumn fLineNumberColumn;
+	private SourceViewer viewer;
+	private List<SourceViewerDecorationSupport> fSourceViewerDecorationSupport = new ArrayList<>(3);
 
 	private DocumentFetcher documents;
 
@@ -391,6 +414,10 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		MAX_LINE_LEN = QuickSearchActivator.getDefault().getPreferences().getMaxLineLen();
 		MAX_RESULTS = QuickSearchActivator.getDefault().getPreferences().getMaxResults();
 		progressJob.setSystem(true);
+
+		// for listening to editor show/hide line number preference value
+		fPreferenceChangeListener= QuickSearchDialog.this::handlePropertyChangeEvent;
+		EditorsUI.getPreferenceStore().addPropertyChangeListener(fPreferenceChangeListener);
 	}
 
 	/*
@@ -870,7 +897,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		});
 
 		createDetailsArea(sashForm);
-		sashForm.setWeights(new int[] {5,2});
+		sashForm.setWeights(new int[] {5,2,2});
 
 		applyDialogFont(content);
 
@@ -915,6 +942,14 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			blankImage.dispose();
 			blankImage = null;
 		}
+
+		EditorsUI.getPreferenceStore().removePropertyChangeListener(fPreferenceChangeListener);
+		if (fSourceViewerDecorationSupport != null) {
+			for (SourceViewerDecorationSupport sourceViewerDecorationSupport : fSourceViewerDecorationSupport) {
+				sourceViewerDecorationSupport.dispose();
+			}
+			fSourceViewerDecorationSupport = null;
+		}
 	}
 
 	private void createDetailsArea(Composite parent) {
@@ -928,8 +963,96 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				refreshDetails();
 			}
 		});
+
+		Composite viewerParent = new Canvas(parent, SWT.BORDER);
+		viewerParent.setLayout(new FillLayout());
+		viewer = new SourceViewer(viewerParent, new CompositeRuler(), SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY);
+		viewer.getTextWidget().setFont(JFaceResources.getFont(TEXT_FONT));
+		fShowLineNumber= EditorsUI.getPreferenceStore().getBoolean(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER);
+		if(fShowLineNumber){
+			updateLineNumberRuler();
+		}
+		if (!isCursorLinePainterInstalled(viewer))
+			getSourceViewerDecorationSupport(viewer).install(EditorsUI.getPreferenceStore());
 	}
 
+	/**
+	 * Hides or shows line number ruler column based of preference setting
+	 */
+	private void updateLineNumberRuler() {
+		if (!fShowLineNumber) {
+			if (fLineNumberColumn != null) {
+				viewer.removeVerticalRulerColumn(fLineNumberColumn);
+			}
+		} else {
+			if (fLineNumberColumn == null) {
+				fLineNumberColumn = new LineNumberRulerColumn();
+				updateLineNumberColumnPresentation(false);
+			}
+			viewer.addVerticalRulerColumn(fLineNumberColumn);
+		}
+	}
+
+	private void updateLineNumberColumnPresentation(boolean refresh) {
+		if (fLineNumberColumn == null)
+			return;
+		RGB rgb=  getColorFromStore(EditorsUI.getPreferenceStore(), AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR);
+		if (rgb == null)
+			rgb= new RGB(0, 0, 0);
+		ISharedTextColors sharedColors= EditorsUI.getSharedTextColors();
+		fLineNumberColumn.setForeground(sharedColors.getColor(rgb));
+		if (refresh) {
+			fLineNumberColumn.redraw();
+		}
+	}
+
+	private RGB getColorFromStore(IPreferenceStore store, String key) {
+		RGB rgb= null;
+		if (store.contains(key)) {
+			if (store.isDefault(key))
+				rgb= PreferenceConverter.getDefaultColor(store, key);
+			else
+				rgb= PreferenceConverter.getColor(store, key);
+		}
+		return rgb;
+	}
+
+	/**
+	 * Toggles line number ruler column.
+	 */
+	private void toggleLineNumberRuler() {
+		fShowLineNumber=!fShowLineNumber;
+		updateLineNumberRuler();
+	}
+
+	/**
+	 * handle show/hide line numbers from editor preferences
+	 */
+	protected void handlePropertyChangeEvent(PropertyChangeEvent event) {
+
+		String key= event.getProperty();
+
+		if(key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER)){
+			boolean b= EditorsUI.getPreferenceStore().getBoolean(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER);
+			if (b != fShowLineNumber){
+				toggleLineNumberRuler();
+			}
+		} else if (key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR)) {
+			updateLineNumberColumnPresentation(true);
+		}
+	}
+
+	private boolean isCursorLinePainterInstalled(SourceViewer viewer) {
+		return viewer.getTextWidget().getTypedListeners(ST.LineGetBackground, CursorLinePainter.class)
+				.findFirst().isPresent();
+	}
+
+	private SourceViewerDecorationSupport getSourceViewerDecorationSupport(ISourceViewer viewer) {
+		SourceViewerDecorationSupport support = new SourceViewerDecorationSupport(viewer, null, null, EditorsUI.getSharedTextColors());
+		support.setCursorLinePainterPreferenceKeys(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE, AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE_COLOR);
+		fSourceViewerDecorationSupport.add(support);
+		return support;
+	}
 
 	// Dumber version just using the a 'raw' StyledText widget.
 	private void refreshDetails() {
@@ -942,7 +1065,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				details.setText(EMPTY_STRING);
 			} else {
 				//Not empty selection
-				final int context = 100; // number of lines before and after match to include in preview
+				final int context = 10; // number of lines before and after match to include in preview
 				int numLines = computeLines();
 				if (numLines > 0) {
 					LineItem item = (LineItem) sel.getFirstElement();
@@ -952,19 +1075,33 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 							int line = item.getLineNumber()-1; //in document lines are 0 based. In search 1 based.
 							int contextStartLine = Math.max(line-(numLines-1)/2 - context, 0);
 							int start = document.getLineOffset(contextStartLine);
+							int shownEndLine = line + numLines/2;
 							int end = document.getLength();
-							try {
-								IRegion lineInfo = document.getLineInformation(line + numLines/2 + context);
-								end = lineInfo.getOffset() + lineInfo.getLength();
-							} catch (BadLocationException e) {
-								//Presumably line number is past the end of document.
-								//ignore.
+							if (shownEndLine + context <= document.getNumberOfLines()) {
+								try {
+									IRegion lineInfo = document.getLineInformation(shownEndLine + context);
+									end = lineInfo.getOffset() + lineInfo.getLength();
+								} catch (BadLocationException e) {
+									//Presumably line number is past the end of document.
+									//ignore.
+								}
 							}
 
 							StyledString styledString = highlightMatches(document.get(start, end-start));
 							details.setText(styledString.getString());
 							details.setStyleRanges(styledString.getStyleRanges());
 							details.setTopIndex(Math.max(line - contextStartLine - numLines/2, 0));
+
+							viewer.setDocument(document);
+							viewer.setVisibleRegion(start, end-start);
+							int rangeStart = document.getLineOffset(Math.max(line - numLines/2, 0));
+							IRegion rangeEndLineInfo = document.getLineInformation(Math.min(shownEndLine, document.getNumberOfLines()));
+							int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
+							//viewer.setRangeIndication(rangeStart, rangeEnd - rangeStart, false);
+							viewer.revealRange(rangeStart, rangeEnd - rangeStart);
+							viewer.setSelectedRange(item.getOffset(), 0);
+							viewer.getTextWidget().setStyleRanges(styledString.getStyleRanges());
+
 							return;
 						} catch (BadLocationException e) {
 						}
