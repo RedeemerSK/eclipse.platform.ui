@@ -49,6 +49,7 @@ import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.CursorLinePainter;
+import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.source.CompositeRuler;
@@ -363,6 +364,8 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private static final String EMPTY_STRING = ""; //$NON-NLS-1$
 
+	private static final Document EMPTY_DOCUMENT = new Document();
+
 	private final int MAX_LINE_LEN;
 	private final int MAX_RESULTS;
 
@@ -370,7 +373,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private QuickTextSearcher searcher;
 
-	private StyledText details;
+//	private StyledText details;
 	private final IPropertyChangeListener fPreferenceChangeListener;
 	private boolean fShowLineNumber = false;
 	private LineNumberRulerColumn fLineNumberColumn;
@@ -897,7 +900,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		});
 
 		createDetailsArea(sashForm);
-		sashForm.setWeights(new int[] {5,2,2});
+		sashForm.setWeights(new int[] {5,2});
 
 		applyDialogFont(content);
 
@@ -953,16 +956,16 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private void createDetailsArea(Composite parent) {
-		details = new StyledText(parent, SWT.MULTI+SWT.READ_ONLY+SWT.BORDER+SWT.H_SCROLL+SWT.V_SCROLL);
-		details.setFont(JFaceResources.getFont(TEXT_FONT));
+//		details = new StyledText(parent, SWT.MULTI+SWT.READ_ONLY+SWT.BORDER+SWT.H_SCROLL+SWT.V_SCROLL);
+//		details.setFont(JFaceResources.getFont(TEXT_FONT));
 
 		list.addSelectionChangedListener(event -> refreshDetails());
-		details.addControlListener(new ControlAdapter() {
-			@Override
-			public void controlResized(ControlEvent e) {
-				refreshDetails();
-			}
-		});
+//		details.addControlListener(new ControlAdapter() {
+//			@Override
+//			public void controlResized(ControlEvent e) {
+//				refreshDetails();
+//			}
+//		});
 
 		Composite viewerParent = new Canvas(parent, SWT.BORDER);
 		viewerParent.setLayout(new FillLayout());
@@ -974,6 +977,12 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 		if (!isCursorLinePainterInstalled(viewer))
 			getSourceViewerDecorationSupport(viewer).install(EditorsUI.getPreferenceStore());
+		viewer.getTextWidget().addControlListener(new ControlAdapter() {
+			@Override
+			public void controlResized(ControlEvent e) {
+				refreshDetails();
+			}
+		});
 	}
 
 	/**
@@ -1056,16 +1065,17 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	// Dumber version just using the a 'raw' StyledText widget.
 	private void refreshDetails() {
-		if (details!=null && list!=null && !list.getTable().isDisposed()) {
+		if (viewer!=null && list!=null && !list.getTable().isDisposed()) {
 			if (documents==null) {
 				documents = new DocumentFetcher();
 			}
 			IStructuredSelection sel = (IStructuredSelection) list.getSelection();
 			if (sel==null || sel.isEmpty()) {
-				details.setText(EMPTY_STRING);
+//				details.setText(EMPTY_STRING);
+				viewer.setDocument(null);
 			} else {
 				//Not empty selection
-				final int context = 10; // number of lines before and after match to include in preview
+				final int context = 100; // number of lines before and after match to include in preview
 				int numLines = computeLines();
 				if (numLines > 0) {
 					LineItem item = (LineItem) sel.getFirstElement();
@@ -1087,15 +1097,16 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 								}
 							}
 
-							StyledString styledString = highlightMatches(document.get(start, end-start));
-							details.setText(styledString.getString());
-							details.setStyleRanges(styledString.getStyleRanges());
-							details.setTopIndex(Math.max(line - contextStartLine - numLines/2, 0));
+							int contextLenght = end-start;
+							StyledString styledString = highlightMatches(document.get(start, contextLenght));
+//							details.setText(styledString.getString());
+//							details.setStyleRanges(styledString.getStyleRanges());
+//							details.setTopIndex(Math.max(line - contextStartLine - numLines/2, 0));
 
 							viewer.setDocument(document);
-							viewer.setVisibleRegion(start, end-start);
+							viewer.setVisibleRegion(start, contextLenght);
 							int rangeStart = document.getLineOffset(Math.max(line - numLines/2, 0));
-							IRegion rangeEndLineInfo = document.getLineInformation(Math.min(shownEndLine, document.getNumberOfLines()));
+							IRegion rangeEndLineInfo = document.getLineInformation(Math.min(shownEndLine, document.getNumberOfLines() - 1));
 							int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
 							//viewer.setRangeIndication(rangeStart, rangeEnd - rangeStart, false);
 							viewer.revealRange(rangeStart, rangeEnd - rangeStart);
@@ -1109,7 +1120,8 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				}
 			}
 			//empty selection or some error:
-			details.setText(EMPTY_STRING);
+//			details.setText(EMPTY_STRING);
+			viewer.setDocument(null);
 		}
 	}
 
@@ -1117,7 +1129,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	 * Computes how many lines of text can be displayed in the details section.
 	 */
 	private int computeLines() {
-		if (details!=null && !details.isDisposed()) {
+		StyledText details;
+//		if (details!=null && !details.isDisposed()) {
+		if (viewer!=null && !(details = viewer.getTextWidget()).isDisposed()) {
 			int lineHeight = details.getLineHeight();
 			int areaHeight = details.getClientArea().height;
 			return (areaHeight + lineHeight - 1) / lineHeight;
