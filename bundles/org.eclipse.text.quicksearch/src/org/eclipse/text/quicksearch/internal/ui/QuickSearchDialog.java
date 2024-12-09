@@ -375,7 +375,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 //	private StyledText details;
 	private final IPropertyChangeListener fPreferenceChangeListener;
-	private boolean fShowLineNumber = false;
 	private LineNumberRulerColumn fLineNumberColumn;
 	private SourceViewer viewer;
 	private List<SourceViewerDecorationSupport> fSourceViewerDecorationSupport = new ArrayList<>(3);
@@ -971,10 +970,11 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		viewerParent.setLayout(new FillLayout());
 		viewer = new SourceViewer(viewerParent, new CompositeRuler(), SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY);
 		viewer.getTextWidget().setFont(JFaceResources.getFont(TEXT_FONT));
-		fShowLineNumber= EditorsUI.getPreferenceStore().getBoolean(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER);
-		if(fShowLineNumber){
-			updateLineNumberRuler();
-		}
+
+		fLineNumberColumn = new LineNumberRulerColumn();
+		updateLineNumberColumnPresentation(false);
+		viewer.addVerticalRulerColumn(fLineNumberColumn);
+		
 		if (!isCursorLinePainterInstalled(viewer))
 			getSourceViewerDecorationSupport(viewer).install(EditorsUI.getPreferenceStore());
 		viewer.getTextWidget().addControlListener(new ControlAdapter() {
@@ -983,23 +983,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				refreshDetails();
 			}
 		});
-	}
-
-	/**
-	 * Hides or shows line number ruler column based of preference setting
-	 */
-	private void updateLineNumberRuler() {
-		if (!fShowLineNumber) {
-			if (fLineNumberColumn != null) {
-				viewer.removeVerticalRulerColumn(fLineNumberColumn);
-			}
-		} else {
-			if (fLineNumberColumn == null) {
-				fLineNumberColumn = new LineNumberRulerColumn();
-				updateLineNumberColumnPresentation(false);
-			}
-			viewer.addVerticalRulerColumn(fLineNumberColumn);
-		}
 	}
 
 	private void updateLineNumberColumnPresentation(boolean refresh) {
@@ -1027,26 +1010,13 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	/**
-	 * Toggles line number ruler column.
-	 */
-	private void toggleLineNumberRuler() {
-		fShowLineNumber=!fShowLineNumber;
-		updateLineNumberRuler();
-	}
-
-	/**
 	 * handle show/hide line numbers from editor preferences
 	 */
 	protected void handlePropertyChangeEvent(PropertyChangeEvent event) {
 
 		String key= event.getProperty();
 
-		if(key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER)){
-			boolean b= EditorsUI.getPreferenceStore().getBoolean(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER);
-			if (b != fShowLineNumber){
-				toggleLineNumberRuler();
-			}
-		} else if (key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR)) {
+		if (key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR)) {
 			updateLineNumberColumnPresentation(true);
 		}
 	}
