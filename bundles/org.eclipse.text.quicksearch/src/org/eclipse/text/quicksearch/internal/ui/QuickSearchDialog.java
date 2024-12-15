@@ -416,8 +416,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		MAX_LINE_LEN = QuickSearchActivator.getDefault().getPreferences().getMaxLineLen();
 		MAX_RESULTS = QuickSearchActivator.getDefault().getPreferences().getMaxResults();
 		progressJob.setSystem(true);
-
-		// for listening to editor show/hide line number preference value
 		fPreferenceChangeListener= QuickSearchDialog.this::handlePropertyChangeEvent;
 		EditorsUI.getPreferenceStore().addPropertyChangeListener(fPreferenceChangeListener);
 	}
@@ -974,7 +972,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		fLineNumberColumn = new LineNumberRulerColumn();
 		updateLineNumberColumnPresentation(false);
 		viewer.addVerticalRulerColumn(fLineNumberColumn);
-		
+
 		if (!isCursorLinePainterInstalled(viewer))
 			getSourceViewerDecorationSupport(viewer).install(EditorsUI.getPreferenceStore());
 		viewer.getTextWidget().addControlListener(new ControlAdapter() {
@@ -1009,14 +1007,8 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		return rgb;
 	}
 
-	/**
-	 * handle show/hide line numbers from editor preferences
-	 */
 	protected void handlePropertyChangeEvent(PropertyChangeEvent event) {
-
-		String key= event.getProperty();
-
-		if (key.equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR)) {
+		if (event.getProperty().equals(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_LINE_NUMBER_RULER_COLOR)) {
 			updateLineNumberColumnPresentation(true);
 		}
 	}
@@ -1080,7 +1072,14 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 							int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
 							//viewer.setRangeIndication(rangeStart, rangeEnd - rangeStart, false);
 							viewer.revealRange(rangeStart, rangeEnd - rangeStart);
-							viewer.setSelectedRange(item.getOffset(), 0);
+							var targetLineFirstMatch= getQuery().findFirst(document.get(item.getOffset(), contextLenght - (item.getOffset() - start)));
+							int targetLineFirstMatchStart= item.getOffset() + targetLineFirstMatch.getOffset();
+							// select first occurrence in target line
+							//viewer.setSelectedRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
+							// sets caret position + highlight current line
+							viewer.setSelectedRange(targetLineFirstMatchStart, 0);
+							// does horizontal scrolling if necessary to reveal 1st occurrence in target line
+							viewer.revealRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
 							viewer.getTextWidget().setStyleRanges(styledString.getStyleRanges());
 
 							return;
