@@ -49,12 +49,13 @@ import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.CursorLinePainter;
-import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IPaintPositionManager;
+import org.eclipse.jface.text.IPainter;
 import org.eclipse.jface.text.IRegion;
+import org.eclipse.jface.text.ITextViewerExtension2;
 import org.eclipse.jface.text.source.CompositeRuler;
 import org.eclipse.jface.text.source.ISharedTextColors;
-import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jface.text.source.LineNumberRulerColumn;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.util.IPropertyChangeListener;
@@ -76,6 +77,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.ACC;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
+import org.eclipse.swt.custom.LineBackgroundEvent;
+import org.eclipse.swt.custom.LineBackgroundListener;
 import org.eclipse.swt.custom.ST;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StyleRange;
@@ -98,7 +101,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -364,8 +366,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private static final String EMPTY_STRING = ""; //$NON-NLS-1$
 
-	private static final Document EMPTY_DOCUMENT = new Document();
-
 	private final int MAX_LINE_LEN;
 	private final int MAX_RESULTS;
 
@@ -373,11 +373,11 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private QuickTextSearcher searcher;
 
-//	private StyledText details;
 	private final IPropertyChangeListener fPreferenceChangeListener;
 	private LineNumberRulerColumn fLineNumberColumn;
 	private SourceViewer viewer;
-	private List<SourceViewerDecorationSupport> fSourceViewerDecorationSupport = new ArrayList<>(3);
+	private SourceViewerDecorationSupport fSourceViewerDecorationSupport;
+	private FixedLinePainter fTargetLineCursorLinePainter;
 
 	private DocumentFetcher documents;
 
@@ -943,26 +943,20 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			blankImage = null;
 		}
 
+		/* TODO remove
 		EditorsUI.getPreferenceStore().removePropertyChangeListener(fPreferenceChangeListener);
 		if (fSourceViewerDecorationSupport != null) {
-			for (SourceViewerDecorationSupport sourceViewerDecorationSupport : fSourceViewerDecorationSupport) {
-				sourceViewerDecorationSupport.dispose();
-			}
-			fSourceViewerDecorationSupport = null;
+			fSourceViewerDecorationSupport.dispose();
+			fSourceViewerDecorationSupport= null;
+			fTargetLineCursorLinePainter.dispose();
+			viewer.getTextWidget().removeLineBackgroundListener(fTargetLineCursorLinePainter);
+			fTargetLineCursorLinePainter= null;
 		}
+		*/
 	}
 
 	private void createDetailsArea(Composite parent) {
-//		details = new StyledText(parent, SWT.MULTI+SWT.READ_ONLY+SWT.BORDER+SWT.H_SCROLL+SWT.V_SCROLL);
-//		details.setFont(JFaceResources.getFont(TEXT_FONT));
-
 		list.addSelectionChangedListener(event -> refreshDetails());
-//		details.addControlListener(new ControlAdapter() {
-//			@Override
-//			public void controlResized(ControlEvent e) {
-//				refreshDetails();
-//			}
-//		});
 
 		Composite viewerParent = new Canvas(parent, SWT.BORDER);
 		viewerParent.setLayout(new FillLayout());
@@ -972,9 +966,8 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		fLineNumberColumn = new LineNumberRulerColumn();
 		updateLineNumberColumnPresentation(false);
 		viewer.addVerticalRulerColumn(fLineNumberColumn);
+		createLinesHighlightingDecorations();
 
-		if (!isCursorLinePainterInstalled(viewer))
-			getSourceViewerDecorationSupport(viewer).install(EditorsUI.getPreferenceStore());
 		viewer.getTextWidget().addControlListener(new ControlAdapter() {
 			@Override
 			public void controlResized(ControlEvent e) {
@@ -1013,19 +1006,17 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 	}
 
-	private boolean isCursorLinePainterInstalled(SourceViewer viewer) {
-		return viewer.getTextWidget().getTypedListeners(ST.LineGetBackground, CursorLinePainter.class)
-				.findFirst().isPresent();
+	private void createLinesHighlightingDecorations() {
+		fSourceViewerDecorationSupport= new SourceViewerDecorationSupport(viewer, null, null, EditorsUI.getSharedTextColors());
+		fSourceViewerDecorationSupport.setCursorLinePainterPreferenceKeys(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE, AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE_COLOR);
+		fSourceViewerDecorationSupport.install(EditorsUI.getPreferenceStore());
+		if (viewer instanceof ITextViewerExtension2 viewerExtension) {
+			fTargetLineCursorLinePainter= new FixedLinePainter();
+			viewerExtension.addPainter(fTargetLineCursorLinePainter);
+			viewer.getTextWidget().addLineBackgroundListener(fTargetLineCursorLinePainter);
+		}
 	}
 
-	private SourceViewerDecorationSupport getSourceViewerDecorationSupport(ISourceViewer viewer) {
-		SourceViewerDecorationSupport support = new SourceViewerDecorationSupport(viewer, null, null, EditorsUI.getSharedTextColors());
-		support.setCursorLinePainterPreferenceKeys(AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE, AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE_COLOR);
-		fSourceViewerDecorationSupport.add(support);
-		return support;
-	}
-
-	// Dumber version just using the a 'raw' StyledText widget.
 	private void refreshDetails() {
 		if (viewer!=null && list!=null && !list.getTable().isDisposed()) {
 			if (documents==null) {
@@ -1033,7 +1024,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 			IStructuredSelection sel = (IStructuredSelection) list.getSelection();
 			if (sel==null || sel.isEmpty()) {
-//				details.setText(EMPTY_STRING);
 				viewer.setDocument(null);
 			} else {
 				//Not empty selection
@@ -1058,19 +1048,18 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 									//ignore.
 								}
 							}
+							if (fTargetLineCursorLinePainter != null) {
+								fTargetLineCursorLinePainter.setfLineOffset(item.getOffset() - start);
+							}
 
 							int contextLenght = end-start;
 							StyledString styledString = highlightMatches(document.get(start, contextLenght));
-//							details.setText(styledString.getString());
-//							details.setStyleRanges(styledString.getStyleRanges());
-//							details.setTopIndex(Math.max(line - contextStartLine - numLines/2, 0));
 
 							viewer.setDocument(document);
 							viewer.setVisibleRegion(start, contextLenght);
 							int rangeStart = document.getLineOffset(Math.max(line - numLines/2, 0));
 							IRegion rangeEndLineInfo = document.getLineInformation(Math.min(shownEndLine, document.getNumberOfLines() - 1));
 							int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
-							//viewer.setRangeIndication(rangeStart, rangeEnd - rangeStart, false);
 							viewer.revealRange(rangeStart, rangeEnd - rangeStart);
 							var targetLineFirstMatch= getQuery().findFirst(document.get(item.getOffset(), contextLenght - (item.getOffset() - start)));
 							int targetLineFirstMatchStart= item.getOffset() + targetLineFirstMatch.getOffset();
@@ -1089,7 +1078,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				}
 			}
 			//empty selection or some error:
-//			details.setText(EMPTY_STRING);
 			viewer.setDocument(null);
 		}
 	}
@@ -1099,7 +1087,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	 */
 	private int computeLines() {
 		StyledText details;
-//		if (details!=null && !details.isDisposed()) {
 		if (viewer!=null && !(details = viewer.getTextWidget()).isDisposed()) {
 			int lineHeight = details.getLineHeight();
 			int areaHeight = details.getClientArea().height;
@@ -1122,47 +1109,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 		return styledText;
 	}
-
-// Version using sourceviewer
-//	private void refreshDetails() {
-//		if (details!=null && list!=null && !list.getTable().isDisposed()) {
-//			if (documents==null) {
-//				documents = new DocumentFetcher();
-//			}
-//			IStructuredSelection sel = (IStructuredSelection) list.getSelection();
-//			if (sel!=null && !sel.isEmpty()) {
-//				//Not empty selection
-//				LineItem item = (LineItem) sel.getFirstElement();
-//				IDocument document = documents.getDocument(item.getFile());
-//				try {
-//					int line = item.getLineNumber()-1; //in document lines are 0 based. In search 1 based.
-//					int start = document.getLineOffset(Math.max(line-2, 0));
-//					int end = document.getLength();
-//					try {
-//						end = document.getLineOffset(line+3);
-//					} catch (BadLocationException e) {
-//						//Presumably line number is past the end of document.
-//						//ignore.
-//					}
-//					details.setDocument(document, start, end-start);
-//
-//					String visibleText = document.get(start, end-start);
-//					List<TextRange> matches = getQuery().findAll(visibleText);
-//					Region visibleRegion = new Region(start, end-start);
-//					TextPresentation presentation = new TextPresentation(visibleRegion, 20);
-//					presentation.setDefaultStyleRange(new StyleRange(0, document.getLength(), null, null));
-//					for (TextRange m : matches) {
-//						presentation.addStyleRange(new StyleRange(m.start+start, m.len, null, YELLOW));
-//					}
-//					details.changeTextPresentation(presentation, true);
-//
-//					return;
-//				} catch (BadLocationException e) {
-//				}
-//			}
-//			details.setDocument(null);
-//		}
-//	}
 
 	/**
 	 * Handle selection in the items list by updating labels of selected and
@@ -1558,6 +1504,71 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	public QuickTextQuery getQuery() {
 		return searcher.getQuery();
+	}
+
+	/**
+	 * A painter the draws the background of fixed line in a configured color.
+	 *
+	 * This class piggybacks on CursorLinePainter instance already added to viewer's widget which knows what color to use
+	 * and does all the necessary repainting. This class only forces the background color to be used also for one fixed line
+	 * in addition to current line = line where caret is currently located (done by CursorLinePainter).
+	 * Background for this fixed line never changes and so CursorLinePainter's repainting code, although not knowing a thing
+	 * about this fixed line, produces correct visual results.
+	 */
+	private class FixedLinePainter implements IPainter, LineBackgroundListener {
+
+		private CursorLinePainter fCursorLinePainter;
+		private int fLineOffset;
+		private Color fHighlightColor;
+
+		public void setfLineOffset(int lineOffset) {
+//			System.out.println("Target line offset: " + lineOffset); //$NON-NLS-1$
+			fLineOffset= lineOffset;
+		}
+
+		private boolean cursorLinePainterInstalled() {
+			if (fCursorLinePainter == null) {
+				// CursorLinePainter adds itself as line LineBackgroundListener lazily
+				fCursorLinePainter= viewer.getTextWidget().getTypedListeners(ST.LineGetBackground, CursorLinePainter.class).findFirst().orElse(null);
+				return fCursorLinePainter != null;
+			}
+			return true;
+		}
+
+		@Override
+		public void lineGetBackground(LineBackgroundEvent event) {
+			if (cursorLinePainterInstalled()) {
+				fCursorLinePainter.lineGetBackground(event);
+//				System.out.println(event.lineOffset
+//						+ (event.lineBackground == null ? "( )" : "(X)") //$NON-NLS-1$ //$NON-NLS-2$
+//						+ (event.lineOffset == fLineOffset ? "(X)" : "( )") //$NON-NLS-1$ //$NON-NLS-2$
+//						+ ": " + event.lineText); //$NON-NLS-1$
+				if (event.lineBackground != null) {
+					// piggyback on CursorLinePainter knowing proper color
+					fHighlightColor= event.lineBackground;
+				} else if (fLineOffset == event.lineOffset) { // target line
+					event.lineBackground= fHighlightColor;
+				}
+			}
+		}
+
+		@Override
+		public void dispose() {
+		}
+
+		@Override
+		public void paint(int reason) {
+			// no custom painting here, fCursorLinePainter being also registered as IPainter does all the work
+		}
+
+		@Override
+		public void deactivate(boolean redraw) {
+		}
+
+		@Override
+		public void setPositionManager(IPaintPositionManager manager) {
+		}
+
 	}
 
 }
