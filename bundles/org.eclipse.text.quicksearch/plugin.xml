@@ -10,9 +10,12 @@
 
   Contributors:
      Pivotal Inc - Initial API and implementation
+     Jozef Tonek - source viewers extension
 -->
 <?eclipse version="3.4"?>
 <plugin>
+
+   <extension-point id="sourceViewers" name="%sourceViewers" schema="schema/sourceViewers.exsd"/>
 
    <extension point="org.eclipse.ui.commands">
       <category
@@ -99,7 +102,7 @@
       </key>
    </extension>
 
-   <extension point = "org.eclipse.ui.preferencePages">
+   <extension point="org.eclipse.ui.preferencePages">
        <page
              category="org.eclipse.ui.preferencePages.Workbench"
              class="org.eclipse.text.quicksearch.internal.ui.QuickSearchPreferencesPage"
@@ -107,13 +110,23 @@
              name="%quickSearch.label">
        </page>
    </extension>
-   <extension
-         point="org.eclipse.ui.quickAccess">
+
+   <extension point="org.eclipse.ui.quickAccess">
       <computer
             class="org.eclipse.text.quicksearch.internal.ui.QuickSearchQuickAccessComputer"
             name="%quickAccess.category.label"
             requiresUIAccess="false">
       </computer>
    </extension>
-
+   
+   <extension point="org.eclipse.text.quicksearch.sourceViewers">
+      <viewer
+            id="org.eclipse.text.quicksearch.DefaultSourceViewer"
+            class="org.eclipse.text.quicksearch.internal.ui.DefaultSourceViewerCreator"/>
+      <contentTypeBinding
+            contentTypeId="org.eclipse.core.runtime.text"
+            sourceViewerId="org.eclipse.text.quicksearch.DefaultSourceViewer">
+      </contentTypeBinding>
+</extension> 
+   
 </plugin>

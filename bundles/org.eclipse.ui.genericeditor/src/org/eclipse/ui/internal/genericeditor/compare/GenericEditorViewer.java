@@ -61,6 +61,10 @@ public class GenericEditorViewer extends Viewer {
 		sourceViewer.getTextWidget().addDisposeListener(e -> disconnect());
 	}
 
+	public SourceViewer getSourceViewer() {
+		return sourceViewer;
+	}
+
 	@Override
 	public Control getControl() {
 		return sourceViewer.getControl();
@@ -122,7 +126,7 @@ public class GenericEditorViewer extends Viewer {
 		}
 	}
 
-	private static class Storage<T extends ITypedElement & IEncodedStreamContentAccessor> extends PlatformObject
+	public static class Storage<T extends ITypedElement & IEncodedStreamContentAccessor> extends PlatformObject
 			implements IEncodedStorage {
 
 		private final T element;
@@ -158,7 +162,7 @@ public class GenericEditorViewer extends Viewer {
 
 	}
 
-	private static class StorageEditorInput extends PlatformObject implements IStorageEditorInput {
+	public static class StorageEditorInput extends PlatformObject implements IStorageEditorInput {
 
 		private final IStorage storage;
 
