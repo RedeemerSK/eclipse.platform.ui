@@ -1105,12 +1105,10 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 			int contextLenght = end-start;
 
-			StyledString styledString = highlightMatches(document.get(start, contextLenght));
+			// some matches may fall out of visible region (set below), but we still prepare & pass ranges for all
+			StyledString styledString = highlightMatches(document.get());
 			var ranges = styledString.getStyleRanges();
-			for (StyleRange range : ranges) {
-				range.start += start; // translate to document (full) content coordinate
-			}
-			// TODO if same documents were provided for same files, we could avoid doing setInput()
+			// TODO if same documents were provided for same files, we could avoid executing setInput() cascade
 			currentViewerWrapper.setInput(document, ranges, file.getFullPath());
 
 			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);

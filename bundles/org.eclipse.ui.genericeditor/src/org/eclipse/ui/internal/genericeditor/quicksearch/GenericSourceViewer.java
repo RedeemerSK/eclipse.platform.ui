@@ -40,7 +40,8 @@ public class GenericSourceViewer extends SourceViewer {
 	private IEditorInput editorInput;
 
 	public GenericSourceViewer(Composite parent) {
-		super(parent, new CompositeRuler(), SWT.H_SCROLL | SWT.V_SCROLL);
+		super(parent, new CompositeRuler(),
+				SWT.H_SCROLL | SWT.V_SCROLL | SWT.READ_ONLY | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION);
 		setEditable(false);
 
 		// use the same font as the TextMergeViewer
@@ -48,6 +49,7 @@ public class GenericSourceViewer extends SourceViewer {
 		getTextWidget().addDisposeListener(e -> disconnect());
 
 		// TODO styling & color preference changes listener
+		// TODO current line highlighting
 		// (consider creating common re-usable code)
 		addVerticalRulerColumn(new LineNumberRulerColumn());
 	}
