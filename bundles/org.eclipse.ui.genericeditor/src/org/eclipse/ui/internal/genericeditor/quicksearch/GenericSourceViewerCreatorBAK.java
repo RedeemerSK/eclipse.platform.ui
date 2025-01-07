@@ -24,43 +24,43 @@ import org.eclipse.compare.ITypedElement;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.source.CompositeRuler;
+import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
-import org.eclipse.text.quicksearch.SourceViewerHandleFactory;
 
-public class GenericSourceViewerCreator implements ISourceViewerCreator {
+public class GenericSourceViewerCreatorBAK implements ISourceViewerCreator {
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-//		if (true) {
-//			return null;
-//		}
-		var viewerProvider = new ViewerProvider();
-		return SourceViewerHandleFactory.createHandle(parent, viewerProvider, viewerProvider);
-	}
-
-	static class ViewerProvider
-			implements org.eclipse.text.quicksearch.SourceViewerHandleFactory.ISourceViewerCreator<GenericSourceViewer>,
-			org.eclipse.text.quicksearch.SourceViewerHandleFactory.ISourceViewerInputSetter<GenericSourceViewer> {
-		StyleRange[] matchRangers = null;
-
-		@Override
-		public GenericSourceViewer createSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles) {
-			var viewer = new GenericSourceViewer(parent, verticalRuler, styles);
-			viewer.addTextPresentationListener(p -> p.mergeStyleRanges(matchRangers));
-			return viewer;
+		if (true) {
+			return null;
 		}
+//		var viewer = new GenericEditorViewer(parent);
+		var viewer = new GenericSourceViewerBAK(parent);
 
-		@Override
-		public void setViewerInput(GenericSourceViewer viewer, IDocument document, StyleRange[] matchRangers,
-				IPath filePath) {
-			this.matchRangers = matchRangers;
-			viewer.setInput(new Input(document, filePath));
-			ISourceViewerInputSetter.applyMatchesStyles(matchRangers, viewer);
-		}
+		return new ISourceViewerHandle() {
+			StyleRange[] matchRangers = null;
+
+			{
+				// enrich content based text styling with matches styles
+				viewer.addTextPresentationListener(p -> p.mergeStyleRanges(matchRangers));
+			}
+
+			@Override
+			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
+				this.matchRangers = matchRangers;
+				viewer.setInput(new Input(document, filePath));
+				applyMatchesStyles(matchRangers);
+			}
+
+			@Override
+			public ITextViewer getSourceViewer() {
+//				return viewer.getSourceViewer();
+				return viewer;
+			}
+		};
 	}
 
 	static class Input implements ITypedElement, IEncodedStreamContentAccessor {

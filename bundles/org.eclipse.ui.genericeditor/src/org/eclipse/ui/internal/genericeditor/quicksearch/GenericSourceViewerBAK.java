@@ -18,9 +18,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.text.source.CompositeRuler;
-import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.text.quicksearch.AbstractQuicksearchSourceViewerBAK;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.internal.genericeditor.ExtensionBasedTextViewerConfiguration;
@@ -30,13 +29,14 @@ import org.eclipse.ui.internal.genericeditor.compare.GenericEditorViewer.Storage
 import org.eclipse.ui.texteditor.ChainedPreferenceStore;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 
-public class GenericSourceViewer extends SourceViewer {
+public class GenericSourceViewerBAK extends AbstractQuicksearchSourceViewerBAK {
 
 	private IEditorInput editorInput;
 
-	public GenericSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles) {
-		super(parent, verticalRuler, null, false, styles);
+	public GenericSourceViewerBAK(Composite parent) {
+		super(parent);
 		getTextWidget().addDisposeListener(e -> disconnect());
+		initialize();
 
 	}
 
@@ -74,6 +74,7 @@ public class GenericSourceViewer extends SourceViewer {
 		ExtensionBasedTextViewerConfiguration configuration = new ExtensionBasedTextViewerConfiguration(null,
 				new ChainedPreferenceStore(new IPreferenceStore[] { EditorsUI.getPreferenceStore(),
 						GenericEditorPlugin.getDefault().getPreferenceStore() }));
+		setSourceViewerConfiguration(configuration);
 
 		unconfigure();
 		configure(configuration);

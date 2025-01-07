@@ -51,6 +51,7 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.CursorLinePainter;
@@ -1030,7 +1031,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private Color getTargetLineHighlightColor() {
-		RGB background = getColorFromStore(EDITOR_CURRENT_LINE_COLOR);
+		RGB background = getColorFromStore(EditorsUI.getPreferenceStore(), EDITOR_CURRENT_LINE_COLOR);
 		ISharedTextColors sharedColors = EditorsUI.getSharedTextColors();
 		return sharedColors.getColor(background);
 	}
@@ -1048,8 +1049,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 	}
 
-	public static RGB getColorFromStore(String key) {
-		var store = EditorsUI.getPreferenceStore();
+	public static RGB getColorFromStore(IPreferenceStore store, String key) {
 		RGB rgb = null;
 		if (store.contains(key)) {
 			if (store.isDefault(key)) {

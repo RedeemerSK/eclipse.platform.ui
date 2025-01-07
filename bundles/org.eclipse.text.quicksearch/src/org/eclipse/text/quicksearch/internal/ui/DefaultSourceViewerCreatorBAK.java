@@ -15,21 +15,44 @@
  *******************************************************************************/
 package org.eclipse.text.quicksearch.internal.ui;
 
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.ITextViewer;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.text.quicksearch.AbstractQuicksearchSourceViewerBAK;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
-import org.eclipse.text.quicksearch.SourceViewerHandleFactory;
 
 /**
  * Creates DefaultSourceViewer used as fallback by Quick Search plugin-in to display file content.
  *
  * @see ISourceViewerCreator
  */
-public class DefaultSourceViewerCreator implements ISourceViewerCreator {
+public class DefaultSourceViewerCreatorBAK implements ISourceViewerCreator {
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-		return SourceViewerHandleFactory.createHandle(parent,
-				(p, ruler, styles) -> new DefaultSourceViewer(p, ruler, styles),
-				(viewer, document, ranges, path) -> viewer.setViewerInput(document, ranges, path));
+		return new DefaultSourceViewerBAK(parent);
 	}
+
+	static class DefaultSourceViewerBAK extends AbstractQuicksearchSourceViewerBAK implements ISourceViewerHandle {
+		private static final String DISABLE_CSS = "org.eclipse.e4.ui.css.disabled"; //$NON-NLS-1$
+
+		public DefaultSourceViewerBAK(Composite parent) {
+			super(parent);
+			getTextWidget().setData(DISABLE_CSS, Boolean.TRUE);
+		}
+
+		@Override
+		public ITextViewer getSourceViewer() {
+			return this;
+		}
+
+		@Override
+		public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
+			setInput(document);
+			ISourceViewerInputSetter.applyMatchesStyles(matchRangers, this);
+		};
+	}
+
 }
