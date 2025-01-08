@@ -24,12 +24,12 @@ import org.eclipse.compare.ITypedElement;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.source.CompositeRuler;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
-import org.eclipse.text.quicksearch.SourceViewerHandleFactory;
+import org.eclipse.text.quicksearch.SourceViewerHandle;
+import org.eclipse.text.quicksearch.SourceViewerConfigurer;
 
 public class GenericSourceViewerCreator implements ISourceViewerCreator {
 
@@ -38,29 +38,14 @@ public class GenericSourceViewerCreator implements ISourceViewerCreator {
 //		if (true) {
 //			return null;
 //		}
-		var viewerProvider = new ViewerProvider();
-		return SourceViewerHandleFactory.createHandle(parent, viewerProvider, viewerProvider);
-	}
-
-	static class ViewerProvider
-			implements org.eclipse.text.quicksearch.SourceViewerHandleFactory.ISourceViewerCreator<GenericSourceViewer>,
-			org.eclipse.text.quicksearch.SourceViewerHandleFactory.ISourceViewerInputSetter<GenericSourceViewer> {
-		StyleRange[] matchRangers = null;
-
-		@Override
-		public GenericSourceViewer createSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles) {
-			var viewer = new GenericSourceViewer(parent, verticalRuler, styles);
-			viewer.addTextPresentationListener(p -> p.mergeStyleRanges(matchRangers));
-			return viewer;
-		}
-
-		@Override
-		public void setViewerInput(GenericSourceViewer viewer, IDocument document, StyleRange[] matchRangers,
-				IPath filePath) {
-			this.matchRangers = matchRangers;
-			viewer.setInput(new Input(document, filePath));
-			ISourceViewerInputSetter.applyMatchesStyles(matchRangers, viewer);
-		}
+		return new SourceViewerHandle(new SourceViewerConfigurer(GenericSourceViewer::new), parent, true) {
+			@Override
+			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
+				this.fMatchRangers = matchRangers;
+				fSourceViewer.setInput(new Input(document, filePath)); // we have to change input type
+				applyMatchesStyles(matchRangers);
+			}
+		};
 	}
 
 	static class Input implements ITypedElement, IEncodedStreamContentAccessor {

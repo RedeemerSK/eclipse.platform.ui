@@ -47,16 +47,10 @@ public interface ISourceViewerCreator {
 	 *
 	 * @see ISourceViewerCreator
 	 */
-	public interface ISourceViewerHandle extends ISourceViewerInputSetter {
+	public interface ISourceViewerHandle {
 
 		ITextViewer getSourceViewer();
 
-		default void applyMatchesStyles(StyleRange[] ranges) {
-			ISourceViewerInputSetter.applyMatchesStyles(ranges, getSourceViewer());
-		}
-	}
-
-	public interface ISourceViewerInputSetter {
 		/**
 		 * Sets input to the source viewer represented by the handle.
 		 * @param document document to show in viewer
@@ -65,7 +59,11 @@ public interface ISourceViewerCreator {
 		 */
 		void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath);
 
-		static void applyMatchesStyles(StyleRange[] ranges, ITextViewer viewer) {
+		default void applyMatchesStyles(StyleRange[] ranges) {
+			applyMatchesStyles(ranges, getSourceViewer());
+		}
+
+		default void applyMatchesStyles(StyleRange[] ranges, ITextViewer viewer) {
 			if (ranges == null || ranges.length == 0) {
 				return;
 			}

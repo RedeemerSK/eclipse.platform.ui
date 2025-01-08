@@ -24,6 +24,7 @@ import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionProvider;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
@@ -39,27 +40,36 @@ import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
  */
 public class SourceViewerConfigurer {
 
-	protected final SourceViewer fSourceViewer;
-	protected final CompositeRuler fVerticalRuler;
+	public static final int VIEWER_STYLES = SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION | SWT.READ_ONLY;
+
+	private final ISourceViewerConstructor fViewerCreator;
 	private final IPropertyChangeListener fPropertyChangeListener = this::handlePreferenceStoreChanged;
 	private final LineNumberRulerColumn fLineNumberRulerColumn = new LineNumberRulerColumn();
-	protected IPreferenceStore fPreferenceStore;
+
+	protected final CompositeRuler fVerticalRuler = new CompositeRuler();
+	protected final IPreferenceStore fPreferenceStore;
+	protected SourceViewer fSourceViewer;
 	private Font fFont;
 
 //	protected SourceViewerConfiguration fConfiguration;
 
-	protected SourceViewerConfigurer(SourceViewer viewer, CompositeRuler verticalRuler) {
-		this(viewer, verticalRuler, EditorsUI.getPreferenceStore());
+	public SourceViewerConfigurer(ISourceViewerConstructor viewerCreator) {
+		this(EditorsUI.getPreferenceStore(), viewerCreator);
 	}
 
-	protected SourceViewerConfigurer(SourceViewer viewer, CompositeRuler verticalRuler, IPreferenceStore store) {
-		Assert.isNotNull(viewer);
-		Assert.isNotNull(verticalRuler);
+	public SourceViewerConfigurer(IPreferenceStore store, ISourceViewerConstructor viewerCreator) {
 		Assert.isNotNull(store);
-		fVerticalRuler = verticalRuler;
-		fSourceViewer = viewer;
-		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
+		Assert.isNotNull(viewerCreator);
+		fViewerCreator = viewerCreator;
 		fPreferenceStore = store;
+	}
+
+	SourceViewer getSourceViewer(Composite parent) {
+		fSourceViewer = fViewerCreator.createSourceViewer(parent, fVerticalRuler, VIEWER_STYLES);
+		Assert.isNotNull(fSourceViewer);
+		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
+		initialize();
+		return fSourceViewer;
 	}
 
 	protected void initialize() {
@@ -338,7 +348,7 @@ public class SourceViewerConfigurer {
 		return false;
 	}
 
-	public interface IQuickSearchSourceViewerProvider {
+	public interface ISourceViewerConstructor {
 		SourceViewer createSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles);
 	}
 
