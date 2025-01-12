@@ -15,7 +15,7 @@
  *******************************************************************************/
 package org.eclipse.text.quicksearch;
 
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.swt.custom.StyleRange;
@@ -55,9 +55,9 @@ public interface ISourceViewerCreator {
 		 * Sets input to the source viewer represented by the handle.
 		 * @param document document to show in viewer
 		 * @param matchRangers styles to apply to found matches in presented document
-		 * @param filePath where the search match is found
+		 * @param file where the search match is found
 		 */
-		void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath);
+		void setViewerInput(IDocument document, StyleRange[] matchRangers, IFile file);
 
 		default void applyMatchesStyles(StyleRange[] ranges) {
 			applyMatchesStyles(ranges, getSourceViewer());

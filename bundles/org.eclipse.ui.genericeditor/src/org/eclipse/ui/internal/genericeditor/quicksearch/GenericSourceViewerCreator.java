@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.eclipse.compare.IEncodedStreamContentAccessor;
 import org.eclipse.compare.ITypedElement;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.text.IDocument;
@@ -28,21 +29,18 @@ import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
-import org.eclipse.text.quicksearch.SourceViewerHandle;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
+import org.eclipse.text.quicksearch.SourceViewerHandle;
 
 public class GenericSourceViewerCreator implements ISourceViewerCreator {
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-//		if (true) {
-//			return null;
-//		}
-		return new SourceViewerHandle(new SourceViewerConfigurer(GenericSourceViewer::new), parent, true) {
+		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(GenericSourceViewer::new), parent, true) {
 			@Override
-			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IPath filePath) {
+			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IFile file) {
 				this.fMatchRangers = matchRangers;
-				fSourceViewer.setInput(new Input(document, filePath)); // we have to change input type
+				fSourceViewer.setInput(new Input(document, file.getFullPath())); // we have to change input type
 				applyMatchesStyles(matchRangers);
 			}
 		};

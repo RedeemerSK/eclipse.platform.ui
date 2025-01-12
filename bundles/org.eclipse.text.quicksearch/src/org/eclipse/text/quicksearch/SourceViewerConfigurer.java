@@ -38,33 +38,31 @@ import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
 /**
  * @since 1.3
  */
-public class SourceViewerConfigurer {
+public class SourceViewerConfigurer<T extends SourceViewer> {
 
 	public static final int VIEWER_STYLES = SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION | SWT.READ_ONLY;
 
-	private final ISourceViewerConstructor fViewerCreator;
+	private final ISourceViewerConstructor<T> fViewerCreator;
 	private final IPropertyChangeListener fPropertyChangeListener = this::handlePreferenceStoreChanged;
 	private final LineNumberRulerColumn fLineNumberRulerColumn = new LineNumberRulerColumn();
 
 	protected final CompositeRuler fVerticalRuler = new CompositeRuler();
 	protected final IPreferenceStore fPreferenceStore;
-	protected SourceViewer fSourceViewer;
+	protected T fSourceViewer;
 	private Font fFont;
 
-//	protected SourceViewerConfiguration fConfiguration;
-
-	public SourceViewerConfigurer(ISourceViewerConstructor viewerCreator) {
+	public SourceViewerConfigurer(ISourceViewerConstructor<T> viewerCreator) {
 		this(EditorsUI.getPreferenceStore(), viewerCreator);
 	}
 
-	public SourceViewerConfigurer(IPreferenceStore store, ISourceViewerConstructor viewerCreator) {
+	public SourceViewerConfigurer(IPreferenceStore store, ISourceViewerConstructor<T> viewerCreator) {
 		Assert.isNotNull(store);
 		Assert.isNotNull(viewerCreator);
 		fViewerCreator = viewerCreator;
 		fPreferenceStore = store;
 	}
 
-	SourceViewer getSourceViewer(Composite parent) {
+	protected T getSourceViewer(Composite parent) {
 		fSourceViewer = fViewerCreator.createSourceViewer(parent, fVerticalRuler, VIEWER_STYLES);
 		Assert.isNotNull(fSourceViewer);
 		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
@@ -77,10 +75,6 @@ public class SourceViewerConfigurer {
 
 		initializeColors();
 		initializeFont();
-
-//		if (fConfiguration != null) {
-//			fSourceViewer.configure(fConfiguration);
-//		}
 
 		var currentLineDecorations = new SourceViewerDecorationSupport(fSourceViewer, null, null, EditorsUI.getSharedTextColors());
 		currentLineDecorations.setCursorLinePainterPreferenceKeys(EDITOR_CURRENT_LINE, EDITOR_CURRENT_LINE_COLOR);
@@ -147,7 +141,6 @@ public class SourceViewerConfigurer {
 	 * Initializes the given viewer's font.
 	 *
 	 * @param viewer the viewer
-	 * @since 2.0
 	 */
 	private void initializeFont() {
 
@@ -187,7 +180,6 @@ public class SourceViewerConfigurer {
 	 *
 	 * @param sourceViewer the source viewer
 	 * @param font the font
-	 * @since 2.0
 	 */
 	private void setFont(Font font) {
 		if (fSourceViewer.getDocument() != null) {
@@ -237,7 +229,6 @@ public class SourceViewerConfigurer {
 	 * </p>
 	 *
 	 * @return a String with the key
-	 * @since 2.1
 	 */
 	protected final String getFontPropertyPreferenceKey() {
 		String symbolicFontName= getSymbolicFontName();
@@ -260,28 +251,6 @@ public class SourceViewerConfigurer {
 	protected final IPreferenceStore getPreferenceStore() {
 		return fPreferenceStore;
 	}
-
-//	/**
-//	 * Sets source viewer configuration used to configure this source viewer.
-//	 * This method must be called before call to {@link #initialize()}. If not, this viewer uses a
-//	 * <code>SourceViewerConfiguration</code>.
-//	 *
-//	 * @param configuration the source viewer configuration object
-//	 */
-//	protected void setSourceViewerConfiguration(SourceViewerConfiguration configuration) {
-//		Assert.isNotNull(configuration);
-//		fConfiguration= configuration;
-//	}
-//
-//	/**
-//	 * Returns this source viewer's configuration. May return <code>null</code>
-//	 * before call to {@link #initialize()} and after disposal.
-//	 *
-//	 * @return this source viewer's configuration which may be <code>null</code>
-//	 */
-//	protected final SourceViewerConfiguration getSourceViewerConfiguration() {
-//		return fConfiguration;
-//	}
 
 	/**
 	 * Adds additional ruler contributions to the vertical ruler.
@@ -348,8 +317,8 @@ public class SourceViewerConfigurer {
 		return false;
 	}
 
-	public interface ISourceViewerConstructor {
-		SourceViewer createSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles);
+	public interface ISourceViewerConstructor<T extends SourceViewer> {
+		T createSourceViewer(Composite parent, CompositeRuler verticalRuler, int styles);
 	}
 
 }

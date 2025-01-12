@@ -29,7 +29,7 @@ public class DefaultSourceViewerCreator implements ISourceViewerCreator {
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-		return new SourceViewerHandle(new SourceViewerConfigurer(DefaultSourceViewer::new), parent);
+		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(DefaultSourceViewer::new), parent);
 	}
 
 }

@@ -1109,7 +1109,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			StyledString styledString = highlightMatches(document.get());
 			var ranges = styledString.getStyleRanges();
 			// TODO if same documents were provided for same files, we could avoid executing setInput() cascade
-			currentViewerWrapper.setInput(document, ranges, file.getFullPath());
+			currentViewerWrapper.setInput(document, ranges, file);
 
 			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
 
@@ -1572,7 +1572,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			viewer = handle.getSourceViewer();
 		}
 
-		void setInput(IDocument input, StyleRange[] ranges, IPath file) {
+		void setInput(IDocument input, StyleRange[] ranges, IFile file) {
 			// setting document triggers resize of the text widget that is OK to ignore
 			var wasInCall = inSetInputCall.getAndSet(true);
 			try {
