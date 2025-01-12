@@ -69,13 +69,14 @@ public class GenericSourceViewer extends SourceViewer {
 					.log(new Status(IStatus.ERROR, GenericEditorPlugin.BUNDLE_ID, ex.getMessage(), ex));
 		}
 
+		unconfigure();
+
 		setDocument(documentProvider.getDocument(editorInput));
 
 		ExtensionBasedTextViewerConfiguration configuration = new ExtensionBasedTextViewerConfiguration(null,
 				new ChainedPreferenceStore(new IPreferenceStore[] { EditorsUI.getPreferenceStore(),
 						GenericEditorPlugin.getDefault().getPreferenceStore() }));
 
-		unconfigure();
 		configure(configuration);
 	}
 

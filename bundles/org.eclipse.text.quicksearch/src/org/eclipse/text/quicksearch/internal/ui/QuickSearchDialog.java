@@ -1006,11 +1006,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 					&& handle.getSourceViewer() instanceof ITextViewer viewer) {
 				var wrp = wrapper = new SourceViewerWrapper(descriptor, handle, viewerParent);
 				viewerWrappers.put(descriptor, wrapper);
-
-				System.out.println("QuickSearchDialog:"); //$NON-NLS-1$
-				viewerWrappers.values().forEach(System.out::println);
-				System.out.println("----"); //$NON-NLS-1$
-
 				wrapper.targetLineHighlighter.highlightColor = getTargetLineHighlightColor();
 				viewer.getTextWidget().addLineBackgroundListener(wrapper.targetLineHighlighter);
 				viewer.getTextWidget().addControlListener(new ControlAdapter() {
