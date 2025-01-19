@@ -384,6 +384,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private SourceViewerWrapper currentViewerWrapper;
 
 	private DocumentFetcher documents;
+	private IDocument lastDocument;
 
 
 	private ToggleCaseSensitiveAction toggleCaseSensitiveAction;
@@ -1069,7 +1070,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 					var file = item.getFile();
 					IDocument document = documents.getDocument(file);
 					if (document!=null) {
-						replaceViewer(QuickSearchActivator.getDefault().getViewer(file));
+						if (document != lastDocument) {
+							replaceViewer(QuickSearchActivator.getDefault().getViewer(file));
+						}
 						showInViewer(item, file, document);
 						return;
 					}
@@ -1100,13 +1103,16 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 			int contextLenght = end-start;
 
-			// some matches may fall out of visible region (set below), but we still prepare & pass ranges for all
-			StyledString styledString = highlightMatches(document.get());
-			var ranges = styledString.getStyleRanges();
-			// TODO if same documents were provided for same files, we could avoid executing setInput() cascade
-			currentViewerWrapper.setInput(document, ranges, file);
+			if (document != lastDocument) {
+				// some matches may fall out of visible region (set below), but we still prepare & pass ranges for all
+				StyledString styledString = highlightMatches(document.get());
+				var ranges = styledString.getStyleRanges();
+				lastDocument = document;
+				currentViewerWrapper.setInput(document, ranges, file);
+			}
 
 			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
+			currentViewerWrapper.handle.matchLineSelected(line);
 
 			currentViewerWrapper.targetLineHighlighter.setTargetLineOffset(item.getOffset() - start);
 

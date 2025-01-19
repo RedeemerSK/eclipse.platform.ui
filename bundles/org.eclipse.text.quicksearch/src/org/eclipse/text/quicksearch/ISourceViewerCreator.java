@@ -59,6 +59,8 @@ public interface ISourceViewerCreator {
 		 */
 		void setViewerInput(IDocument document, StyleRange[] matchRangers, IFile file);
 
+		void matchLineSelected(int line);
+
 		default void applyMatchesStyles(StyleRange[] ranges) {
 			applyMatchesStyles(ranges, getSourceViewer());
 		}

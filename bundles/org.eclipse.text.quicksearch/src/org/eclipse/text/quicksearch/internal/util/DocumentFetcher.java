@@ -82,7 +82,7 @@ public class DocumentFetcher {
 	 *    buffer nor corresponds to an existing file in the workspace.
 	 */
 	public IDocument getDocument(IFile file) {
-		if (file==lastFile) {
+		if (file.equals(lastFile)) {
 			return lastDocument;
 		}
 		lastFile = file;

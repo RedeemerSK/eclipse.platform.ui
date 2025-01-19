@@ -12,12 +12,25 @@ import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELE
 import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELECTION_FOREGROUND;
 import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELECTION_FOREGROUND_SYSTEM_DEFAULT;
 
+import java.util.Iterator;
+
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.Position;
+import org.eclipse.jface.text.source.Annotation;
+import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.CompositeRuler;
+import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.jface.text.source.IAnnotationModelListener;
+import org.eclipse.jface.text.source.IChangeRulerColumn;
+import org.eclipse.jface.text.source.ILineDiffInfo;
+import org.eclipse.jface.text.source.ILineDiffer;
 import org.eclipse.jface.text.source.ISharedTextColors;
+import org.eclipse.jface.text.source.LineNumberChangeRulerColumn;
 import org.eclipse.jface.text.source.LineNumberRulerColumn;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.util.IPropertyChangeListener;
@@ -33,6 +46,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.text.quicksearch.internal.ui.QuickSearchDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.ui.internal.editors.text.EditorsPlugin;
 import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
 
 /**
@@ -44,7 +58,7 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 
 	private final ISourceViewerConstructor<T> fViewerCreator;
 	private final IPropertyChangeListener fPropertyChangeListener = this::handlePreferenceStoreChanged;
-	private final LineNumberRulerColumn fLineNumberRulerColumn = new LineNumberRulerColumn();
+	private final LineNumberChangeRulerColumn fLineNumberRulerColumn = new LineNumberChangeRulerColumn(EditorsUI.getSharedTextColors());
 
 	protected final CompositeRuler fVerticalRuler = new CompositeRuler();
 	protected final IPreferenceStore fPreferenceStore;
@@ -68,6 +82,10 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
 		initialize();
 		return fSourceViewer;
+	}
+
+	protected IChangeRulerColumn getChangeRulerColumn() {
+		return fLineNumberRulerColumn;
 	}
 
 	protected void initialize() {
@@ -116,7 +134,6 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 				: sharedColors.getColor(getColorFromStore(store, PREFERENCE_COLOR_SELECTION_FOREGROUND));
 			textWidget.setSelectionForeground(color);
 
-
 			// ---------- selection background color ----------------------
 			color= store.getBoolean(PREFERENCE_COLOR_SELECTION_BACKGROUND_SYSTEM_DEFAULT)
 				? null
@@ -125,12 +142,58 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 
 			fLineNumberRulerColumn.setBackground(textWidget.getBackground());
 
+			// ----------- line numbers color --------------------
 			var lineNumbersColor = getColorFromStore(store, EDITOR_LINE_NUMBER_RULER_COLOR);
 			if (lineNumbersColor == null) {
 				lineNumbersColor = new RGB(0, 0, 0);
 			}
 			fLineNumberRulerColumn.setForeground(sharedColors.getColor(lineNumbersColor));
+
+			// ----------- result line background color --------------------
+			color = sharedColors.getColor(getColorFromStore(EditorsUI.getPreferenceStore(), EDITOR_CURRENT_LINE_COLOR));
+			fLineNumberRulerColumn.setChangedColor(sharedColors.getColor(reverseInterpolateDiffPainterColor(textWidget.getBackground(), color)));
+
 		}
+	}
+
+	private RGB reverseInterpolateDiffPainterColor(Color backgroundColor, Color finalColor) {
+		RGB baseRGB= finalColor.getRGB();
+		RGB background= backgroundColor.getRGB();
+
+		boolean darkBase= isDark(baseRGB);
+		boolean darkBackground= isDark(background);
+		if (darkBase && darkBackground)
+			background= new RGB(255, 255, 255);
+		else if (!darkBase && !darkBackground)
+			background= new RGB(0, 0, 0);
+
+		// reverse interpolate
+		double scale = 0.6;
+		double scaleInv = 1.0 - scale;
+		return new RGB((int) ((baseRGB.red - scale * background.red) / scaleInv), (int) ((baseRGB.green - scale * background.green) / scaleInv), (int) ((baseRGB.blue - scale * background.blue) / scaleInv));
+	}
+
+
+	/**
+	 * Returns whether the given color is dark or light depending on the colors grey-scale level.
+	 *
+	 * @param rgb the color
+	 * @return <code>true</code> if the color is dark, <code>false</code> if it is light
+	 */
+	private static boolean isDark(RGB rgb) {
+		return greyLevel(rgb) > 128;
+	}
+
+	/**
+	 * Returns the grey value in which the given color would be drawn in grey-scale.
+	 *
+	 * @param rgb the color
+	 * @return the grey-scale value
+	 */
+	private static double greyLevel(RGB rgb) {
+		if (rgb.red == rgb.green && rgb.green == rgb.blue)
+			return rgb.red;
+		return (0.299 * rgb.red + 0.587 * rgb.green + 0.114 * rgb.blue + 0.5);
 	}
 
 	protected RGB getColorFromStore(IPreferenceStore store, String key) {
