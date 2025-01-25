@@ -288,9 +288,10 @@
    </extension>
    <extension
          point="org.eclipse.text.quicksearch.sourceViewers"> 
-      <viewer 
-            id="org.eclipse.ui.genericeditor.quicksearch.GenericEditorViewer" 
+      <viewer
             class="org.eclipse.ui.internal.genericeditor.quicksearch.GenericSourceViewerCreator"
+            id="org.eclipse.ui.genericeditor.quicksearch.GenericEditorViewer"
+            label="%ExtPoint.quicksearchSourceViewer"
             linkedEditor="org.eclipse.ui.genericeditor.GenericEditor"/> 
       <contentTypeBinding
             contentTypeId="org.eclipse.core.runtime.text"

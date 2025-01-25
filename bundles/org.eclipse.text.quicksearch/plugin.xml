@@ -122,6 +122,7 @@
    <extension point="org.eclipse.text.quicksearch.sourceViewers">
       <viewer
             id="org.eclipse.text.quicksearch.DefaultSourceViewer"
+            label="%defaultSourceViewer"
             class="org.eclipse.text.quicksearch.internal.ui.DefaultSourceViewerCreator"/>
       <contentTypeBinding
             contentTypeId="org.eclipse.core.runtime.text"

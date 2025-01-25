@@ -53,7 +53,8 @@ public class ViewerDescriptor implements IViewerDescriptor {
 		return fConfiguration.getAttribute(EXTENSIONS_ATTRIBUTE);
 	}
 
-	String getLabel() {
+	@Override
+	public String getLabel() {
 		return fConfiguration.getAttribute(LABEL_ATTRIBUTE);
 	}
 

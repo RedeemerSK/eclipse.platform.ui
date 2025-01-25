@@ -25,4 +25,11 @@ public interface IViewerDescriptor {
 	 * @return a new viewer creator.
 	 */
 	ISourceViewerCreator getViewerCreator();
+
+	/**
+	 * Returns label for viewer created by provided viewer creator that will be used in UI.
+	 *
+	 * @return label for provided viewer used in UI
+	 */
+	String getLabel();
 }

@@ -12,26 +12,14 @@ import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELE
 import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELECTION_FOREGROUND;
 import static org.eclipse.ui.texteditor.AbstractTextEditor.PREFERENCE_COLOR_SELECTION_FOREGROUND_SYSTEM_DEFAULT;
 
-import java.util.Iterator;
-
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.Position;
-import org.eclipse.jface.text.source.Annotation;
-import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.CompositeRuler;
-import org.eclipse.jface.text.source.IAnnotationModel;
-import org.eclipse.jface.text.source.IAnnotationModelListener;
 import org.eclipse.jface.text.source.IChangeRulerColumn;
-import org.eclipse.jface.text.source.ILineDiffInfo;
-import org.eclipse.jface.text.source.ILineDiffer;
 import org.eclipse.jface.text.source.ISharedTextColors;
 import org.eclipse.jface.text.source.LineNumberChangeRulerColumn;
-import org.eclipse.jface.text.source.LineNumberRulerColumn;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -46,7 +34,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.text.quicksearch.internal.ui.QuickSearchDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
-import org.eclipse.ui.internal.editors.text.EditorsPlugin;
 import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
 
 /**

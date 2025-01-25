@@ -207,7 +207,7 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 			String type = element.getAttribute(CONTENT_TYPE_ID_ATTRIBUTE);
 			String id = element.getAttribute(idAttributeName);
 			if (id == null)
-				log(getFormattedString("QuickSearchPlugin.targetIdAttributeMissing", idAttributeName)); //$NON-NLS-1$
+				log(getFormattedString("QuickSearchActivator.targetIdAttributeMissing", idAttributeName)); //$NON-NLS-1$
 			if (type != null && id != null && fIdMap != null) {
 				T o = fIdMap.get(id);
 				if (o != null) {
@@ -220,10 +220,10 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 							fContentTypeBindings.put(ct, l = new ArrayList<>());
 						l.add(o);
 					} else {
-						log(getFormattedString("QuickSearchPlugin.contentTypeNotFound", type)); //$NON-NLS-1$
+						log(getFormattedString("QuickSearchActivator.contentTypeNotFound", type)); //$NON-NLS-1$
 					}
 				} else {
-					log(getFormattedString("QuickSearchPlugin.targetNotFound", id)); //$NON-NLS-1$
+					log(getFormattedString("QuickSearchActivator.targetNotFound", id)); //$NON-NLS-1$
 				}
 			}
 		}
@@ -281,7 +281,7 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 			String name = element.getName();
 			if (!CONTENT_TYPE_BINDING.equals(name)) {
 				if (!VIEWER_TAG.equals(name))
-					log(getFormattedString("CompareUIPlugin.unexpectedTag", name, VIEWER_TAG)); //$NON-NLS-1$
+					log(getFormattedString("QuickSearchActivator.unexpectedTag", name, VIEWER_TAG)); //$NON-NLS-1$
 				var viewerDescriptor = new ViewerDescriptor(element);
 				fFileViewers.register(element, viewerDescriptor);
 				if (DEFAULT_CREATOR_CLASS.equals(viewerDescriptor.getViewerClass())) {
@@ -300,15 +300,15 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 		return fDefaultViewerDescriptor;
 	}
 
-	public IViewerDescriptor getViewer(IFile file) {
+	public List<IViewerDescriptor> getViewers(IFile file) {
 		initializeExtensionsRegistry();
 		if (file == null) {
-			return getDefaultViewer();
+			return List.of(getDefaultViewer());
 		}
 		return findContentViewerDescriptor(file);
 	}
 
-	private IViewerDescriptor findContentViewerDescriptor(IFile input) {
+	private List<IViewerDescriptor> findContentViewerDescriptor(IFile input) {
 		LinkedHashSet<IViewerDescriptor> result = new LinkedHashSet<>();
 
 		String name = input.getName();
@@ -340,18 +340,15 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 		Set<ViewerDescriptor> editorLinkedDescriptors = findEditorLinkedDescriptors(name, ctype, false);
 		result.addAll(editorLinkedDescriptors);
 
-		if (result.isEmpty()) {
-			return fDefaultViewerDescriptor;
+		if (result.isEmpty() || result.size() == 1) {
+			// single candidate should always be the default viewer, but in case it's not, add default viewer as well
+			result.add(fDefaultViewerDescriptor);
 		} else {
-			var iter = result.iterator();
-			var retVal = iter.next(); // 1st
-			if (retVal == fDefaultViewerDescriptor) {
-				if (iter.hasNext()) {
-					retVal = iter.next(); // 2nd
-				}
-			}
-			return retVal;
+			// more than 1 candidate, make sure default viewer is the last one
+			result.remove(fDefaultViewerDescriptor);
+			result.add(fDefaultViewerDescriptor);
 		}
+		return new ArrayList<>(result);
 	}
 
 	/**

@@ -76,6 +76,16 @@ source viewer handle and implements &lt;samp&gt;org.eclipse.text.quicksearch.ISo
                </documentation>
             </annotation>
          </attribute>
+         <attribute name="label" type="string" use="required">
+            <annotation>
+               <documentation>
+                  a translatable label that will be used in the UI for this viewer.
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
          <attribute name="linkedEditor" type="string">
             <annotation>
                <documentation>
