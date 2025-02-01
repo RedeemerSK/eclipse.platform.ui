@@ -17,8 +17,8 @@ package org.eclipse.text.quicksearch.internal.ui;
 
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator;
-import org.eclipse.text.quicksearch.SourceViewerHandle;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
+import org.eclipse.text.quicksearch.SourceViewerHandle;
 
 /**
  * Creates DefaultSourceViewer used as fallback by Quick Search plugin-in to display file content.
@@ -29,7 +29,7 @@ public class DefaultSourceViewerCreator implements ISourceViewerCreator {
 
 	@Override
 	public ISourceViewerHandle createSourceViewer(Composite parent) {
-		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(DefaultSourceViewer::new), parent);
+		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(DefaultSourceViewer::new), parent, true);
 	}
 
 }
