@@ -354,15 +354,13 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private TableViewer list;
 
-	private MenuManager menuManager;
+	private MenuManager viewMenuManager;
 
 	private MenuManager contextMenuManager;
 
 	private boolean multi;
 
-	private ToolBar toolBar;
-
-	private ToolItem toolItem;
+	private ToolBar viewMenuToolBar;
 
 	private Label progressLabel;
 
@@ -389,7 +387,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private List<IViewerDescriptor> currentDescriptors = Collections.emptyList();
 	private MenuManager viewersSelectionMenuManager;
 	private ToolBar viewersSelectionToolBar;
-	private ToolItem viewersSelectionToolItem;
 
 	private DocumentFetcher documents;
 	private IDocument lastDocument;
@@ -571,8 +568,8 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			showViewHandler.getHandler().dispose();
 			showViewHandler = null;
 		}
-		if (menuManager != null)
-			menuManager.dispose();
+		if (viewMenuManager != null)
+			viewMenuManager.dispose();
 		if (contextMenuManager != null)
 			contextMenuManager.dispose();
 		if (viewersSelectionMenuManager != null)
@@ -696,14 +693,14 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private void createViewMenu(Composite parent) {
-		toolBar = new ToolBar(parent, SWT.FLAT);
-		toolItem = new ToolItem(toolBar, SWT.PUSH, 0);
+		viewMenuToolBar = new ToolBar(parent, SWT.FLAT);
+		ToolItem toolItem = new ToolItem(viewMenuToolBar, SWT.PUSH, 0);
 
 		GridData data = new GridData();
 		data.horizontalAlignment = GridData.END;
-		toolBar.setLayoutData(data);
+		viewMenuToolBar.setLayoutData(data);
 
-		toolBar.addMouseListener(new MouseAdapter() {
+		viewMenuToolBar.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDown(MouseEvent e) {
 				showViewMenu();
@@ -721,9 +718,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 		});
 
-		menuManager = new MenuManager();
+		viewMenuManager = new MenuManager();
 
-		fillViewMenu(menuManager);
+		fillViewMenu(viewMenuManager);
 
 		IHandlerService service = PlatformUI.getWorkbench()
 				.getService(IHandlerService.class);
@@ -742,7 +739,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	/**
 	 * Fills the menu of the dialog.
 	 *
-	 * @param menuManager
+	 * @param viewMenuManager
 	 *           the menu manager
 	 */
 	protected void fillViewMenu(IMenuManager menuManager) {
@@ -754,10 +751,10 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private void showViewMenu() {
-		Menu menu = menuManager.createContextMenu(getShell());
-		Rectangle bounds = toolItem.getBounds();
+		Menu menu = viewMenuManager.createContextMenu(getShell());
+		Rectangle bounds = viewMenuToolBar.getItem(0).getBounds();
 		Point topLeft = new Point(bounds.x, bounds.y + bounds.height);
-		topLeft = toolBar.toDisplay(topLeft);
+		topLeft = viewMenuToolBar.toDisplay(topLeft);
 		menu.setLocation(topLeft.x, topLeft.y);
 		menu.setVisible(true);
 	}
@@ -767,7 +764,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	 * <p>
 	 * Subclasses may extend in order to add other actions.</p>
      *
-     * @param menuManager the context menu manager
+     * @param viewMenuManager the context menu manager
      * @since 3.5
      */
 	protected void fillContextMenu(IMenuManager menuManager) {
@@ -985,24 +982,26 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		Composite parentComposite = new Composite(parent, SWT.NONE);
 		parentComposite.setLayout(new FormLayout());
 
+		viewersSelectionMenuManager = new MenuManager();
+
 		viewersSelectionToolBar = new ToolBar(parentComposite, SWT.FLAT);
 		FormData formData = new FormData();
-		formData.right = new FormAttachment(100, -20); // TODO consider scrollbar width
+		formData.right = new FormAttachment(100, -18); // TODO consider scrollbar width
 		formData.bottom = formData.right;
 		formData.height = 21; // TODO
 		formData.width = 23; // TODO
 		viewersSelectionToolBar.setLayoutData(formData);
-		viewersSelectionToolItem = new ToolItem(viewersSelectionToolBar, SWT.NONE);
-		viewersSelectionToolItem.setImage(QuicksearchPluginImages.getImage(IInternalQuicksearchConstants.IMG_LCL_VIEWER));
-
-		viewersSelectionMenuManager = new MenuManager();
-
+		viewersSelectionToolBar.setVisible(false);
 		viewersSelectionToolBar.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDown(MouseEvent e) {
 				showViewersSelectionMenu();
 			}
 		});
+
+		ToolItem viewersSelectionToolItem = new ToolItem(viewersSelectionToolBar, SWT.NONE);
+		viewersSelectionToolItem.setImage(QuicksearchPluginImages.getImage(IInternalQuicksearchConstants.IMG_LCL_VIEWER));
+//		viewersSelectionToolItem.setImage(WorkbenchImages.getImage(IWorkbenchGraphicConstants.IMG_LCL_VIEW_MENU));
 
 		viewersSelectionToolItem .setToolTipText(""); //$NON-NLS-1$
 		viewersSelectionToolItem.addSelectionListener(new SelectionAdapter() {
@@ -1059,7 +1058,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 
 		Menu menu = viewersSelectionMenuManager.createContextMenu(getShell());
-		Rectangle bounds = viewersSelectionToolItem.getBounds();
+		Rectangle bounds = viewersSelectionToolBar.getItem(0).getBounds();
 		Point topLeft = new Point(bounds.x, bounds.y + bounds.height);
 		topLeft = viewersSelectionToolBar.toDisplay(topLeft);
 		menu.setLocation(topLeft.x, topLeft.y);
@@ -1142,6 +1141,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 					var file = item.getFile();
 					IDocument document = documents.getDocument(file);
 					if (document!=null) {
+						viewersSelectionToolBar.setVisible(true);
 						if (document != lastDocument) {
 							currentDescriptors = QuickSearchActivator.getDefault().getViewers(file);
 							var selectedDescr = SELECTED_VIEWERS.get(file);
