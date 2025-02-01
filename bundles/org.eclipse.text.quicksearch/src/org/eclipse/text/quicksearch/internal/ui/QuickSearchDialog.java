@@ -45,13 +45,17 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.LegacyActionTools;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.layout.GridLayoutFactory;
+import org.eclipse.jface.layout.RowLayoutFactory;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.text.BadLocationException;
@@ -79,6 +83,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.ACC;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
+import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.LineBackgroundEvent;
 import org.eclipse.swt.custom.LineBackgroundListener;
 import org.eclipse.swt.custom.SashForm;
@@ -99,9 +104,6 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.FormAttachment;
-import org.eclipse.swt.layout.FormData;
-import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -385,6 +387,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private StackLayout viewersParentLayout;
 	private SourceViewerWrapper currentViewerWrapper;
 	private List<IViewerDescriptor> currentDescriptors = Collections.emptyList();
+	private CLabel viewerSelectionLabel;
 	private MenuManager viewersSelectionMenuManager;
 	private ToolBar viewersSelectionToolBar;
 
@@ -979,19 +982,25 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private void createDetailsArea(Composite parent) {
-		Composite parentComposite = new Composite(parent, SWT.NONE);
-		parentComposite.setLayout(new FormLayout());
+		Composite detailsComposite = new Composite(parent, SWT.NONE);
+		detailsComposite.setLayout(GridLayoutFactory.fillDefaults().equalWidth(true).spacing(0, 0).create());
 
-		viewersSelectionMenuManager = new MenuManager();
+		final Composite toolbarComposite = new Composite(detailsComposite, SWT.NONE);
+		toolbarComposite.setLayoutData(GridDataFactory.fillDefaults().hint(SWT.DEFAULT, 24).grab(true, false).create());
+		toolbarComposite.setLayout(RowLayoutFactory.fillDefaults().create());
 
-		viewersSelectionToolBar = new ToolBar(parentComposite, SWT.FLAT);
-		FormData formData = new FormData();
-		formData.right = new FormAttachment(100, -18); // TODO consider scrollbar width
-		formData.bottom = formData.right;
-		formData.height = 21; // TODO
-		formData.width = 23; // TODO
-		viewersSelectionToolBar.setLayoutData(formData);
-		viewersSelectionToolBar.setVisible(false);
+		viewerSelectionLabel = new CLabel(toolbarComposite, SWT.NONE);
+
+		viewersSelectionToolBar = new ToolBar(toolbarComposite, SWT.FLAT);
+		final ToolItem toolItem = new ToolItem(viewersSelectionToolBar, SWT.PUSH, 0);
+		toolItem.setImage(WorkbenchImages.getImage(IWorkbenchGraphicConstants.IMG_LCL_VIEW_MENU));
+		toolItem.setToolTipText(QuickSearchMessages.QuickSearchDialog_switchButtonTooltip);
+		toolItem.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				showViewersSelectionMenu();
+			}
+		});
 		viewersSelectionToolBar.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDown(MouseEvent e) {
@@ -999,33 +1008,16 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 		});
 
-		ToolItem viewersSelectionToolItem = new ToolItem(viewersSelectionToolBar, SWT.NONE);
-		viewersSelectionToolItem.setImage(QuicksearchPluginImages.getImage(IInternalQuicksearchConstants.IMG_LCL_VIEWER));
-//		viewersSelectionToolItem.setImage(WorkbenchImages.getImage(IWorkbenchGraphicConstants.IMG_LCL_VIEW_MENU));
+		viewersSelectionMenuManager = new MenuManager();
 
-		viewersSelectionToolItem .setToolTipText(""); //$NON-NLS-1$
-		viewersSelectionToolItem.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				showViewersSelectionMenu();
-			}
-		});
-		// TODO add keyboard traversal
-
-		viewersParent = new Composite(parentComposite, SWT.NONE);
+		viewersParent = new Composite(detailsComposite, SWT.NONE);
+		viewersParent.setLayoutData(GridDataFactory.fillDefaults().grab(true, true).create());
 //		viewersParent.setData("org.eclipse.e4.ui.css.disabled", Boolean.TRUE); //$NON-NLS-1$
 		viewersParentLayout = new StackLayout();
 		viewersParent.setLayout(viewersParentLayout);
 
 		replaceViewer(QuickSearchActivator.getDefault().getDefaultViewer());
 		Assert.isNotNull(currentViewerWrapper, "Default source viewer initialization failed"); //$NON-NLS-1$
-
-		formData = new FormData();
-		formData.top = new FormAttachment(0);
-		formData.left = formData.top;
-		formData.right = new FormAttachment(100);
-		formData.bottom = formData.right;
-		viewersParent.setLayoutData(formData);
 
 		list.addSelectionChangedListener(event -> refreshDetails());
 	}
@@ -1044,20 +1036,32 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 		currentViewerWrapper = wrapper;
 		currentViewerWrapper.showInViewersParent();
+
+		viewerSelectionLabel.setText(currentViewerWrapper.descriptor.getLabel());
+		viewerSelectionLabel.getParent().layout();
+
 		return currentViewerWrapper;
 	}
 
 	private void showViewersSelectionMenu() {
 		viewersSelectionMenuManager.removeAll();
+
+		// add default viewer option
+		LineItem item = (LineItem) ((IStructuredSelection) list.getSelection()).getFirstElement();
+		var defaultDescriptor = currentDescriptors.getFirst();
+		var defaultViewerItem = new DefaultViewerSelectionAction(defaultDescriptor, item);
+		viewersSelectionMenuManager.add(defaultViewerItem);
+		viewersSelectionMenuManager.add(new Separator());
+
+		// add options for all contributed viewers
+		viewersSelectionMenuManager.add(new GroupMarker("viewers")); //$NON-NLS-1$
 		for (IViewerDescriptor viewerDescriptor : currentDescriptors) {
-			var item = new ViewerSelectionAction(viewerDescriptor.getLabel(), viewerDescriptor);
-			if (currentViewerWrapper.descriptor == viewerDescriptor) {
-				item.setChecked(true);
-			}
-			viewersSelectionMenuManager.add(item);
+			viewersSelectionMenuManager.add(
+					new ViewerSelectionAction(viewerDescriptor.getLabel(), viewerDescriptor, item));
 		}
 
 		Menu menu = viewersSelectionMenuManager.createContextMenu(getShell());
+
 		Rectangle bounds = viewersSelectionToolBar.getItem(0).getBounds();
 		Point topLeft = new Point(bounds.x, bounds.y + bounds.height);
 		topLeft = viewersSelectionToolBar.toDisplay(topLeft);
@@ -1147,7 +1151,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 							var selectedDescr = SELECTED_VIEWERS.get(file);
 							if (selectedDescr == null || !currentDescriptors.contains(selectedDescr)) {
 								selectedDescr = currentDescriptors.getFirst();
-								SELECTED_VIEWERS.put(file, selectedDescr);
+								SELECTED_VIEWERS.remove(file);
 							}
 							replaceViewer(selectedDescr);
 						}
@@ -1704,9 +1708,16 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 
 	private class ViewerSelectionAction extends Action {
 		final IViewerDescriptor descriptor;
-		public ViewerSelectionAction(String text,IViewerDescriptor descriptor) {
+		public ViewerSelectionAction(String text, IViewerDescriptor descriptor, LineItem selectedItem) {
 			super(text, IAction.AS_RADIO_BUTTON);
 			this.descriptor = descriptor;
+			setChecked(createChecked(selectedItem));
+		}
+
+		boolean createChecked(LineItem selectedItem) {
+			return currentViewerWrapper.descriptor == descriptor
+					&& selectedItem != null
+					&& SELECTED_VIEWERS.get(selectedItem.getFile()) == descriptor;
 		}
 
 		@Override
@@ -1714,7 +1725,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			if (isChecked()) {
 				LineItem item = (LineItem) ((IStructuredSelection) list.getSelection()).getFirstElement();
 				var file = item.getFile();
-				SELECTED_VIEWERS.put(file, descriptor);
+				applySelection(file);
 
 				replaceViewer(descriptor);
 
@@ -1723,6 +1734,25 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				showInViewer(item, file, document);
 			}
 		}
+
+		void applySelection(IFile file) {
+			SELECTED_VIEWERS.put(file, descriptor);
+		}
 	}
 
+	private class DefaultViewerSelectionAction extends ViewerSelectionAction {
+		public DefaultViewerSelectionAction(IViewerDescriptor descriptor, LineItem selectedItem) {
+			super(QuickSearchMessages.QuickSearchDialog_defaultViewer, descriptor, selectedItem);
+		}
+
+		@Override
+		boolean createChecked(LineItem selectedItem) {
+			return selectedItem == null || !SELECTED_VIEWERS.containsKey(selectedItem.getFile());
+		}
+
+		@Override
+		void applySelection(IFile file) {
+			SELECTED_VIEWERS.remove(file);
+		}
+	}
 }
