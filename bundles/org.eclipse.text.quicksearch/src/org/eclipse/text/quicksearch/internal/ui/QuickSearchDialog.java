@@ -1038,6 +1038,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		currentViewerWrapper.showInViewersParent();
 
 		viewerSelectionLabel.setText(currentViewerWrapper.descriptor.getLabel());
+		viewerSelectionLabel.setImage(currentViewerWrapper.descriptor.getIcon());
 		viewerSelectionLabel.getParent().layout();
 
 		return currentViewerWrapper;
