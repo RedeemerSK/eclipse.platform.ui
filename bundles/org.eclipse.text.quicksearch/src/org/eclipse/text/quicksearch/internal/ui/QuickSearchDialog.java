@@ -1195,7 +1195,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			}
 
 			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
-			currentViewerWrapper.handle.matchLineSelected(line);
 
 			currentViewerWrapper.targetLineHighlighter.setTargetLineOffset(item.getOffset() - start);
 
@@ -1212,6 +1211,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			// does horizontal scrolling if necessary to reveal 1st occurrence in target line
 			currentViewerWrapper.viewer.revealRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
 
+			currentViewerWrapper.handle.matchLineSelected(line);
 		} catch (BadLocationException e) {
 		}
 	}
