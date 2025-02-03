@@ -7,6 +7,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
@@ -16,6 +17,7 @@ import org.eclipse.jface.text.source.ILineDiffInfo;
 import org.eclipse.jface.text.source.ILineDiffer;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.swt.custom.StyleRange;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator.ISourceViewerHandle;
 
@@ -61,6 +63,34 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 	@Override
 	public T getSourceViewer() {
 		return fSourceViewer;
+	}
+
+	@Override
+	public int getVisibleLines() {
+		StyledText details = fSourceViewer.getTextWidget();
+		if (details != null && !details.isDisposed()) {
+			int lineHeight = details.getLineHeight();
+			int areaHeight = details.getClientArea().height;
+			return (areaHeight + lineHeight - 1) / lineHeight;
+		}
+		return 0;
+	}
+
+	@Override
+	public void focusMatch(IRegion visibleRange, IRegion revealedRange, int matchLine, IRegion matchRegion) {
+		// limit content of the document that we can scroll to
+		fSourceViewer.setVisibleRegion(visibleRange.getOffset(), visibleRange.getLength());
+		// scroll to range to be presented
+		fSourceViewer.revealRange(revealedRange.getOffset(), revealedRange.getLength());
+		// sets caret position
+		fSourceViewer.setSelectedRange(matchRegion.getOffset(), 0);
+		// does horizontal scrolling if necessary to reveal 1st occurrence in target line
+		fSourceViewer.revealRange(matchRegion.getOffset(), matchRegion.getLength());
+
+		if (fFixedLineChangeModel != null) {
+			fFixedLineChangeModel.selectedMatchLine = matchLine;
+			fChangeRulerColumn.redraw();
+		}
 	}
 
 	@Override

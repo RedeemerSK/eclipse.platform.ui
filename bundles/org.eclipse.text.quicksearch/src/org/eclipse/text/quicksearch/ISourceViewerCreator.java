@@ -17,6 +17,7 @@ package org.eclipse.text.quicksearch;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.widgets.Composite;
@@ -58,6 +59,10 @@ public interface ISourceViewerCreator {
 		 * @param file where the search match is found
 		 */
 		void setViewerInput(IDocument document, StyleRange[] matchRangers, IFile file);
+
+		int getVisibleLines();
+
+		void focusMatch(IRegion visibleRange, IRegion revealedRange, int matchLine, IRegion matchRegion);
 
 		void matchLineSelected(int line);
 

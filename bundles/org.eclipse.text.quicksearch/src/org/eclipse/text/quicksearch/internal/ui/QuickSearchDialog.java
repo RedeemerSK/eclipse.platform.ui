@@ -63,6 +63,7 @@ import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextViewer;
+import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.source.ISharedTextColors;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -1141,33 +1142,32 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			IStructuredSelection sel = (IStructuredSelection) list.getSelection();
 			if (sel!=null && !sel.isEmpty()) {
 				//Not empty selection
-				if (computeLines(currentViewerWrapper.viewer) > 0) { // even if current viewer may get replaced
-					LineItem item = (LineItem) sel.getFirstElement();
-					var file = item.getFile();
-					IDocument document = documents.getDocument(file);
-					if (document!=null) {
-						viewersSelectionToolBar.setVisible(true);
-						if (document != lastDocument) {
-							currentDescriptors = QuickSearchActivator.getDefault().getViewers(file);
-							var selectedDescr = SELECTED_VIEWERS.get(file);
-							if (selectedDescr == null || !currentDescriptors.contains(selectedDescr)) {
-								selectedDescr = currentDescriptors.getFirst();
-								SELECTED_VIEWERS.remove(file);
-							}
-							replaceViewer(selectedDescr);
+				LineItem item = (LineItem) sel.getFirstElement();
+				var file = item.getFile();
+				IDocument document = documents.getDocument(file);
+				if (document!=null) {
+					viewersSelectionToolBar.setVisible(true);
+					if (document != lastDocument) {
+						currentDescriptors = QuickSearchActivator.getDefault().getViewers(file);
+						var selectedDescr = SELECTED_VIEWERS.get(file);
+						if (selectedDescr == null || !currentDescriptors.contains(selectedDescr)) {
+							selectedDescr = currentDescriptors.getFirst();
+							SELECTED_VIEWERS.remove(file);
 						}
-						showInViewer(item, file, document);
-						return;
+						replaceViewer(selectedDescr);
 					}
+					showInViewer(item, file, document);
+					return;
 				}
 			}
 			//empty selection or some error:
 			replaceViewer(QuickSearchActivator.getDefault().getDefaultViewer()).setInput(null, null, null);
+			viewersSelectionToolBar.setVisible(false);
 		}
 	}
 
 	private void showInViewer(LineItem item, IFile file, IDocument document) {
-		int numLines = computeLines(currentViewerWrapper.viewer);
+		int numLines = currentViewerWrapper.handle.getVisibleLines();
 		try {
 			final int context = 100; // number of lines before and after match to include in preview
 			int line = item.getLineNumber()-1; //in document lines are 0 based. In search 1 based.
@@ -1187,14 +1187,15 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			int contextLenght = end-start;
 
 			if (document != lastDocument) {
-				// some matches may fall out of visible region (set below), but we still prepare & pass ranges for all
+				// some matches may fall out of visible region, but we still prepare & pass ranges for all
 				StyledString styledString = highlightMatches(document.get());
 				var ranges = styledString.getStyleRanges();
 				lastDocument = document;
 				currentViewerWrapper.setInput(document, ranges, file);
 			}
 
-			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
+//			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
+			var visibleRange = new Region(start, contextLenght);
 
 			currentViewerWrapper.targetLineHighlighter.setTargetLineOffset(item.getOffset() - start);
 
@@ -1202,31 +1203,23 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			IRegion rangeEndLineInfo = document.getLineInformation(Math.min(displayedEndLine, document.getNumberOfLines() - 1));
 			int rangeStart = document.getLineOffset(Math.max(line - numLines/2, 0));
 			int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
-			currentViewerWrapper.viewer.revealRange(rangeStart, rangeEnd - rangeStart);
+			var revealedRange = new Region(rangeStart, rangeEnd - rangeStart);
+
+//			currentViewerWrapper.viewer.revealRange(rangeStart, rangeEnd - rangeStart);
 
 			var targetLineFirstMatch = getQuery().findFirst(document.get(item.getOffset(), contextLenght - (item.getOffset() - start)));
 			int targetLineFirstMatchStart = item.getOffset() + targetLineFirstMatch.getOffset();
 			// sets caret position
-			currentViewerWrapper.viewer.setSelectedRange(targetLineFirstMatchStart, 0);
+//			currentViewerWrapper.viewer.setSelectedRange(targetLineFirstMatchStart, 0);
 			// does horizontal scrolling if necessary to reveal 1st occurrence in target line
-			currentViewerWrapper.viewer.revealRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
+//			currentViewerWrapper.viewer.revealRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
+			var matchRange = new Region(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
 
-			currentViewerWrapper.handle.matchLineSelected(line);
+//			currentViewerWrapper.handle.matchLineSelected(line);
+
+			currentViewerWrapper.handle.focusMatch(visibleRange, revealedRange, line, matchRange);
 		} catch (BadLocationException e) {
 		}
-	}
-
-	/**
-	 * Computes how many lines of text can be displayed in the details section.
-	 */
-	private int computeLines(ITextViewer viewer) {
-		StyledText details;
-		if (!(details = viewer.getTextWidget()).isDisposed()) {
-			int lineHeight = details.getLineHeight();
-			int areaHeight = details.getClientArea().height;
-			return (areaHeight + lineHeight - 1) / lineHeight;
-		}
-		return 0;
 	}
 
 	/**
@@ -1731,7 +1724,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				replaceViewer(descriptor);
 
 				var document = lastDocument;
-				lastDocument = null;
+				lastDocument = null; // to force setInput()
 				showInViewer(item, file, document);
 			}
 		}
