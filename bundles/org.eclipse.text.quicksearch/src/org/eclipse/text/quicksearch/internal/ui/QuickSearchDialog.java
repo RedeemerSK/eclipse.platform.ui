@@ -21,8 +21,6 @@
  *******************************************************************************/
 package org.eclipse.text.quicksearch.internal.ui;
 
-import static org.eclipse.ui.texteditor.AbstractDecoratedTextEditorPreferenceConstants.EDITOR_CURRENT_LINE_COLOR;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,14 +57,10 @@ import org.eclipse.jface.layout.RowLayoutFactory;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.Region;
-import org.eclipse.jface.text.source.ISharedTextColors;
-import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ILazyContentProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -85,12 +79,9 @@ import org.eclipse.swt.accessibility.ACC;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
 import org.eclipse.swt.custom.CLabel;
-import org.eclipse.swt.custom.LineBackgroundEvent;
-import org.eclipse.swt.custom.LineBackgroundListener;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.ControlAdapter;
 import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.KeyAdapter;
@@ -135,7 +126,6 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.SelectionStatusDialog;
-import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.handlers.IHandlerActivation;
 import org.eclipse.ui.handlers.IHandlerService;
 import org.eclipse.ui.internal.IWorkbenchGraphicConstants;
@@ -383,7 +373,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private QuickTextSearcher searcher;
 
 	private final Map<IViewerDescriptor, SourceViewerWrapper> viewerWrappers = new IdentityHashMap<>();
-	private final IPropertyChangeListener preferenceChangeListener = this::handlePropertyChangeEvent;
 	private Composite viewersParent;
 	private StackLayout viewersParentLayout;
 	private SourceViewerWrapper currentViewerWrapper;
@@ -432,7 +421,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		MAX_LINE_LEN = QuickSearchActivator.getDefault().getPreferences().getMaxLineLen();
 		MAX_RESULTS = QuickSearchActivator.getDefault().getPreferences().getMaxResults();
 		progressJob.setSystem(true);
-		EditorsUI.getPreferenceStore().addPropertyChangeListener(preferenceChangeListener);
 	}
 
 	/*
@@ -979,7 +967,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			blankImage.dispose();
 			blankImage = null;
 		}
-		EditorsUI.getPreferenceStore().removePropertyChangeListener(preferenceChangeListener);
 	}
 
 	private void createDetailsArea(Composite parent) {
@@ -1081,8 +1068,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 					&& handle.getSourceViewer() instanceof ITextViewer viewer) {
 				var wrp = wrapper = new SourceViewerWrapper(descriptor, handle, viewerParent);
 				viewerWrappers.put(descriptor, wrapper);
-				wrapper.targetLineHighlighter.highlightColor = getTargetLineHighlightColor();
-				viewer.getTextWidget().addLineBackgroundListener(wrapper.targetLineHighlighter);
 				viewer.getTextWidget().addControlListener(new ControlAdapter() {
 					@Override
 					public void controlResized(ControlEvent e) {
@@ -1101,25 +1086,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		return wrapper != null
 				? wrapper
 				: viewerWrappers.get(QuickSearchActivator.getDefault().getDefaultViewer()); // always expected non NULL
-	}
-
-	private Color getTargetLineHighlightColor() {
-		RGB background = getColorFromStore(EditorsUI.getPreferenceStore(), EDITOR_CURRENT_LINE_COLOR);
-		ISharedTextColors sharedColors = EditorsUI.getSharedTextColors();
-		return sharedColors.getColor(background);
-	}
-
-	private void handlePropertyChangeEvent(PropertyChangeEvent event) {
-		if (viewerWrappers.isEmpty()) {
-			return;
-		}
-		var prop = event.getProperty();
-		if (EDITOR_CURRENT_LINE_COLOR.equals(prop)) {
-			var tgtLineHighlightColor = getTargetLineHighlightColor();
-			for (SourceViewerWrapper wrapper : viewerWrappers.values()) {
-				wrapper.targetLineHighlighter.highlightColor = tgtLineHighlightColor;
-			}
-		}
 	}
 
 	public static RGB getColorFromStore(IPreferenceStore store, String key) {
@@ -1194,10 +1160,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				currentViewerWrapper.setInput(document, ranges, file);
 			}
 
-//			currentViewerWrapper.viewer.setVisibleRegion(start, contextLenght);
 			var visibleRange = new Region(start, contextLenght);
-
-			currentViewerWrapper.targetLineHighlighter.setTargetLineOffset(item.getOffset() - start);
 
 			// center target line in the displayed area
 			IRegion rangeEndLineInfo = document.getLineInformation(Math.min(displayedEndLine, document.getNumberOfLines() - 1));
@@ -1205,17 +1168,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			int rangeEnd = rangeEndLineInfo.getOffset() + rangeEndLineInfo.getLength();
 			var revealedRange = new Region(rangeStart, rangeEnd - rangeStart);
 
-//			currentViewerWrapper.viewer.revealRange(rangeStart, rangeEnd - rangeStart);
-
 			var targetLineFirstMatch = getQuery().findFirst(document.get(item.getOffset(), contextLenght - (item.getOffset() - start)));
 			int targetLineFirstMatchStart = item.getOffset() + targetLineFirstMatch.getOffset();
-			// sets caret position
-//			currentViewerWrapper.viewer.setSelectedRange(targetLineFirstMatchStart, 0);
-			// does horizontal scrolling if necessary to reveal 1st occurrence in target line
-//			currentViewerWrapper.viewer.revealRange(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
 			var matchRange = new Region(targetLineFirstMatchStart, targetLineFirstMatch.getLength());
-
-//			currentViewerWrapper.handle.matchLineSelected(line);
 
 			currentViewerWrapper.handle.focusMatch(visibleRange, revealedRange, line, matchRange);
 		} catch (BadLocationException e) {
@@ -1639,7 +1594,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		final ISourceViewerHandle handle;
 		final Composite viewerParent;
 		final ITextViewer viewer;
-		final FixedLineHighlighter targetLineHighlighter = new FixedLineHighlighter();
 		final AtomicBoolean shouldIgnoreResize = new AtomicBoolean();
 
 		public SourceViewerWrapper(IViewerDescriptor descriptor, ISourceViewerHandle handle, Composite viewerParent) {
@@ -1673,31 +1627,6 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 				}
 			}
 		}
-	}
-
-	/**
-	 * A line background listener that provides the color that is used for current line highlighting (what
-	 * {@link CursorLinePainter} does) but for single fixed line only and does so always regardless of show current
-	 * line highlighting on/off preference.
-	 *
-	 * @see CursorLinePainter
-	 */
-	private static class FixedLineHighlighter implements LineBackgroundListener {
-
-		private int lineOffset = -1;
-		private Color highlightColor;
-
-		public void setTargetLineOffset(int lineOffset) {
-			this.lineOffset = lineOffset;
-		}
-
-		@Override
-		public void lineGetBackground(LineBackgroundEvent event) {
-			if (lineOffset == event.lineOffset) {
-				event.lineBackground = highlightColor;
-			}
-		}
-
 	}
 
 	private class ViewerSelectionAction extends Action {

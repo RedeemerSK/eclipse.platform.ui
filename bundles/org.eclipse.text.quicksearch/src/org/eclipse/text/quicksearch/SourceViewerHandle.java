@@ -6,6 +6,7 @@ import java.util.Iterator;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
@@ -16,10 +17,14 @@ import org.eclipse.jface.text.source.IChangeRulerColumn;
 import org.eclipse.jface.text.source.ILineDiffInfo;
 import org.eclipse.jface.text.source.ILineDiffer;
 import org.eclipse.jface.text.source.SourceViewer;
+import org.eclipse.swt.custom.LineBackgroundEvent;
+import org.eclipse.swt.custom.LineBackgroundListener;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ISourceViewerCreator.ISourceViewerHandle;
+import org.eclipse.text.quicksearch.internal.ui.QuickSearchActivator;
 
 /**
  * @since 1.3
@@ -29,6 +34,7 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 	protected final T fSourceViewer;
 	protected final IChangeRulerColumn fChangeRulerColumn;
 	protected final FixedLineChangedAnnotationModel fFixedLineChangeModel;
+	protected final FixedLineHighlighter fMatchLineHighlighter;
 	protected StyleRange[] fMatchRangers = null;
 
 	public SourceViewerHandle(SourceViewerConfigurer<T> sourceViewerConfigurer, Composite parent) {
@@ -40,6 +46,7 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 		fSourceViewer = sourceViewerConfigurer.getSourceViewer(parent);
 		Assert.isNotNull(fSourceViewer);
 		fChangeRulerColumn = sourceViewerConfigurer.getChangeRulerColumn();
+		fMatchLineHighlighter = sourceViewerConfigurer.getMatchLineHighlighter();
 		if (fChangeRulerColumn != null) {
 			fFixedLineChangeModel = new FixedLineChangedAnnotationModel();
 			fChangeRulerColumn.setModel(fFixedLineChangeModel);
@@ -86,6 +93,14 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 		fSourceViewer.setSelectedRange(matchRegion.getOffset(), 0);
 		// does horizontal scrolling if necessary to reveal 1st occurrence in target line
 		fSourceViewer.revealRange(matchRegion.getOffset(), matchRegion.getLength());
+
+		if (fMatchLineHighlighter != null) {
+			try {
+				fMatchLineHighlighter.setTargetLineOffset(fSourceViewer.getDocument().getLineOffset(matchLine) - visibleRange.getOffset());
+			} catch (BadLocationException e) {
+				QuickSearchActivator.log(e);
+			}
+		}
 
 		if (fFixedLineChangeModel != null) {
 			fFixedLineChangeModel.selectedMatchLine = matchLine;
@@ -214,6 +229,35 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 		@Override
 		public String[] getOriginalText() {
 			return new String[0];
+		}
+
+	}
+
+	/**
+	 * A line background listener that provides the color that is used for current line highlighting (what
+	 * {@link CursorLinePainter} does) but for single fixed line only and does so always regardless of show current
+	 * line highlighting on/off preference.
+	 *
+	 * @see CursorLinePainter
+	 */
+	public static class FixedLineHighlighter implements LineBackgroundListener {
+
+		private int lineOffset = -1;
+		private Color highlightColor;
+
+		public void setHighlightColor(Color highlightColor) {
+			this.highlightColor = highlightColor;
+		}
+
+		public void setTargetLineOffset(int lineOffset) {
+			this.lineOffset = lineOffset;
+		}
+
+		@Override
+		public void lineGetBackground(LineBackgroundEvent event) {
+			if (lineOffset == event.lineOffset) {
+				event.lineBackground = highlightColor;
+			}
 		}
 
 	}

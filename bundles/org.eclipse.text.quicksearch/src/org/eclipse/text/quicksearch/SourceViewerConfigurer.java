@@ -32,6 +32,7 @@ import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.text.quicksearch.SourceViewerHandle.FixedLineHighlighter;
 import org.eclipse.text.quicksearch.internal.ui.QuickSearchDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
@@ -46,6 +47,7 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 	private final ISourceViewerConstructor<T> fViewerCreator;
 	private final IPropertyChangeListener fPropertyChangeListener = this::handlePreferenceStoreChanged;
 	private final LineNumberChangeRulerColumn fLineNumberRulerColumn = new LineNumberChangeRulerColumn(EditorsUI.getSharedTextColors());
+	private final FixedLineHighlighter fMatchLineHighlighter = new FixedLineHighlighter();
 
 	protected final CompositeRuler fVerticalRuler = new CompositeRuler();
 	protected final IPreferenceStore fPreferenceStore;
@@ -75,11 +77,17 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 		return fLineNumberRulerColumn;
 	}
 
+	protected FixedLineHighlighter getMatchLineHighlighter() {
+		return fMatchLineHighlighter;
+	}
+
 	protected void initialize() {
 		fPreferenceStore.addPropertyChangeListener(fPropertyChangeListener);
 
 		initializeColors();
 		initializeFont();
+
+		fSourceViewer.getTextWidget().addLineBackgroundListener(fMatchLineHighlighter);
 
 		var currentLineDecorations = new SourceViewerDecorationSupport(fSourceViewer, null, null, EditorsUI.getSharedTextColors());
 		currentLineDecorations.setCursorLinePainterPreferenceKeys(EDITOR_CURRENT_LINE, EDITOR_CURRENT_LINE_COLOR);
@@ -136,9 +144,12 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 			}
 			fLineNumberRulerColumn.setForeground(sharedColors.getColor(lineNumbersColor));
 
-			// ----------- result line background color --------------------
+			// ----------- line highlight (background) color --------------------
 			color = sharedColors.getColor(getColorFromStore(EditorsUI.getPreferenceStore(), EDITOR_CURRENT_LINE_COLOR));
 			fLineNumberRulerColumn.setChangedColor(sharedColors.getColor(reverseInterpolateDiffPainterColor(textWidget.getBackground(), color)));
+			if (fMatchLineHighlighter != null) {
+				fMatchLineHighlighter.setHighlightColor(color);
+			}
 
 		}
 	}
