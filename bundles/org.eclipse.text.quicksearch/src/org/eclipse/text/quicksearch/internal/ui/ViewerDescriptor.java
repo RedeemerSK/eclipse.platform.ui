@@ -25,13 +25,13 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.text.quicksearch.ISourceViewerCreator;
+import org.eclipse.text.quicksearch.ITextViewerCreator;
 import org.osgi.framework.Bundle;
 
 /**
- * Creates <code>ISourceViewerCreator</code>s from an <code>IConfigurationElement</code>.
+ * Creates <code>ITextViewerCreator</code>s from an <code>IConfigurationElement</code>.
  *
- * @see ISourceViewerCreator
+ * @see ITextViewerCreator
  */
 public class ViewerDescriptor implements IViewerDescriptor {
 	private final static String ID_ATTRIBUTE = "id"; //$NON-NLS-1$
@@ -45,7 +45,7 @@ public class ViewerDescriptor implements IViewerDescriptor {
 	private final String fViewerId;
 	private final String fLabel;
 
-	private ISourceViewerCreator fViewerCreator;
+	private ITextViewerCreator fViewerCreator;
 	private Image fIcon;
 
 	public ViewerDescriptor(IConfigurationElement config) {
@@ -55,10 +55,10 @@ public class ViewerDescriptor implements IViewerDescriptor {
 	}
 
 	@Override
-	public ISourceViewerCreator getViewerCreator() {
+	public ITextViewerCreator getViewerCreator() {
 		if (fViewerCreator == null) {
 			try {
-				fViewerCreator = (ISourceViewerCreator) fConfiguration.createExecutableExtension(CLASS_ATTRIBUTE);
+				fViewerCreator = (ITextViewerCreator) fConfiguration.createExecutableExtension(CLASS_ATTRIBUTE);
 			} catch (CoreException e) {
 				QuickSearchActivator.log(e);
 			}

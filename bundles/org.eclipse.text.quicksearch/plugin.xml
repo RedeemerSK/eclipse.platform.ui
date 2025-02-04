@@ -15,7 +15,7 @@
 <?eclipse version="3.4"?>
 <plugin>
 
-   <extension-point id="sourceViewers" name="%sourceViewers" schema="schema/sourceViewers.exsd"/>
+   <extension-point id="textViewers" name="%textViewers" schema="schema/textViewers.exsd"/>
 
    <extension point="org.eclipse.ui.commands">
       <category
@@ -119,7 +119,7 @@
       </computer>
    </extension>
 
-   <extension point="org.eclipse.text.quicksearch.sourceViewers">
+   <extension point="org.eclipse.text.quicksearch.textViewers">
       <viewer
             class="org.eclipse.text.quicksearch.internal.ui.DefaultSourceViewerCreator"
             icon="icons/full/obj16/file_obj.png"
@@ -127,7 +127,7 @@
             label="%defaultSourceViewer"/>
       <contentTypeBinding
             contentTypeId="org.eclipse.core.runtime.text"
-            sourceViewerId="org.eclipse.text.quicksearch.DefaultSourceViewer">
+            viewerId="org.eclipse.text.quicksearch.DefaultSourceViewer">
       </contentTypeBinding>
 </extension> 
    

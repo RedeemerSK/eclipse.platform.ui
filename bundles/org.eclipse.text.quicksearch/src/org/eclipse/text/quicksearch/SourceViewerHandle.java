@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * https://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *     Jozef Tomek - initial API and implementation
+ *******************************************************************************/
 package org.eclipse.text.quicksearch;
 
 import java.util.Collections;
@@ -23,13 +38,13 @@ import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.text.quicksearch.ISourceViewerCreator.ISourceViewerHandle;
+import org.eclipse.text.quicksearch.ITextViewerCreator.ITextViewerHandle;
 import org.eclipse.text.quicksearch.internal.ui.QuickSearchActivator;
 
 /**
  * @since 1.3
  */
-public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewerHandle {
+public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHandle {
 
 	protected final T fSourceViewer;
 	protected final IChangeRulerColumn fChangeRulerColumn;
@@ -67,7 +82,6 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 		}
 	}
 
-	@Override
 	public T getSourceViewer() {
 		return fSourceViewer;
 	}
@@ -84,19 +98,19 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 	}
 
 	@Override
-	public void focusMatch(IRegion visibleRange, IRegion revealedRange, int matchLine, IRegion matchRegion) {
+	public void focusMatch(IRegion visibleRegion, IRegion revealedRange, int matchLine, IRegion matchRange) {
 		// limit content of the document that we can scroll to
-		fSourceViewer.setVisibleRegion(visibleRange.getOffset(), visibleRange.getLength());
+		fSourceViewer.setVisibleRegion(visibleRegion.getOffset(), visibleRegion.getLength());
 		// scroll to range to be presented
 		fSourceViewer.revealRange(revealedRange.getOffset(), revealedRange.getLength());
 		// sets caret position
-		fSourceViewer.setSelectedRange(matchRegion.getOffset(), 0);
+		fSourceViewer.setSelectedRange(matchRange.getOffset(), 0);
 		// does horizontal scrolling if necessary to reveal 1st occurrence in target line
-		fSourceViewer.revealRange(matchRegion.getOffset(), matchRegion.getLength());
+		fSourceViewer.revealRange(matchRange.getOffset(), matchRange.getLength());
 
 		if (fMatchLineHighlighter != null) {
 			try {
-				fMatchLineHighlighter.setTargetLineOffset(fSourceViewer.getDocument().getLineOffset(matchLine) - visibleRange.getOffset());
+				fMatchLineHighlighter.setTargetLineOffset(fSourceViewer.getDocument().getLineOffset(matchLine) - visibleRegion.getOffset());
 			} catch (BadLocationException e) {
 				QuickSearchActivator.log(e);
 			}
@@ -104,14 +118,6 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 
 		if (fFixedLineChangeModel != null) {
 			fFixedLineChangeModel.selectedMatchLine = matchLine;
-			fChangeRulerColumn.redraw();
-		}
-	}
-
-	@Override
-	public void matchLineSelected(int line) {
-		if (fFixedLineChangeModel != null) {
-			fFixedLineChangeModel.selectedMatchLine = line;
 			fChangeRulerColumn.redraw();
 		}
 	}
@@ -125,8 +131,17 @@ public class SourceViewerHandle<T extends SourceViewer> implements ISourceViewer
 		this.fMatchRangers = matchRangers;
 		fSourceViewer.setInput(document);
 		if (applyMatchStyles) {
-			applyMatchesStyles(matchRangers, fSourceViewer);
+			applyMatchesStyles();
 		}
+	}
+
+	protected void applyMatchesStyles() {
+		if (fMatchRangers == null || fMatchRangers.length == 0) {
+			return;
+		}
+		StyleRange last = fMatchRangers[fMatchRangers.length - 1];
+		fSourceViewer.getTextWidget().replaceStyleRanges(
+				fMatchRangers[0].start, last.start + last.length - fMatchRangers[0].start, fMatchRangers);
 	}
 
 	private static class FixedLineChangedAnnotationModel implements IAnnotationModel, ILineDiffer {

@@ -16,7 +16,7 @@
 package org.eclipse.text.quicksearch.internal.ui;
 
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.text.quicksearch.ISourceViewerCreator;
+import org.eclipse.text.quicksearch.ITextViewerCreator;
 
 public interface IViewerDescriptor {
 
@@ -25,7 +25,7 @@ public interface IViewerDescriptor {
 	 *
 	 * @return a new viewer creator.
 	 */
-	ISourceViewerCreator getViewerCreator();
+	ITextViewerCreator getViewerCreator();
 
 	/**
 	 * Returns label for viewer created by provided viewer creator that will be used in UI.

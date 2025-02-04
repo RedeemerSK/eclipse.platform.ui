@@ -56,10 +56,10 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 	public static final String PLUGIN_ID = "org.eclipse.text.quicksearch"; //$NON-NLS-1$
 
 
-	private static final String SOURCE_VIEWERS_EXTENSION_POINT= "sourceViewers"; //$NON-NLS-1$
+	private static final String TEXT_VIEWERS_EXTENSION_POINT= "textViewers"; //$NON-NLS-1$
 	private static final String CONTENT_TYPE_BINDING = "contentTypeBinding"; //$NON-NLS-1$
 	private static final String VIEWER_TAG = "viewer"; //$NON-NLS-1$
-	private static final String FILE_VIEWER_ID_ATTRIBUTE = "sourceViewerId"; //$NON-NLS-1$
+	private static final String VIEWER_ID_ATTRIBUTE = "viewerId"; //$NON-NLS-1$
 	private static final String DEFAULT_CREATOR_CLASS = DefaultSourceViewerCreator.class.getName();
 
 	private static final IContentTypeManager fgContentTypeManager = Platform.getContentTypeManager();
@@ -276,7 +276,7 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 		IExtensionRegistry registry = Platform.getExtensionRegistry();
 
 		// collect all descriptors which define the source viewer extension point
-		IConfigurationElement[] elements = registry.getConfigurationElementsFor(PLUGIN_ID, SOURCE_VIEWERS_EXTENSION_POINT);
+		IConfigurationElement[] elements = registry.getConfigurationElementsFor(PLUGIN_ID, TEXT_VIEWERS_EXTENSION_POINT);
 		for (IConfigurationElement element : elements) {
 			String name = element.getName();
 			if (!CONTENT_TYPE_BINDING.equals(name)) {
@@ -291,7 +291,7 @@ public class QuickSearchActivator extends AbstractUIPlugin {
 		}
 		for (IConfigurationElement element : elements) {
 			if (CONTENT_TYPE_BINDING.equals(element.getName()))
-				fFileViewers.createBinding(element, FILE_VIEWER_ID_ATTRIBUTE);
+				fFileViewers.createBinding(element, VIEWER_ID_ATTRIBUTE);
 		}
 	}
 

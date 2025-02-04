@@ -28,20 +28,20 @@ import org.eclipse.jface.text.IDocument;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.text.quicksearch.ISourceViewerCreator;
+import org.eclipse.text.quicksearch.ITextViewerCreator;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
 import org.eclipse.text.quicksearch.SourceViewerHandle;
 
-public class GenericSourceViewerCreator implements ISourceViewerCreator {
+public class GenericSourceViewerCreator implements ITextViewerCreator {
 
 	@Override
-	public ISourceViewerHandle createSourceViewer(Composite parent) {
+	public ITextViewerHandle createTextViewer(Composite parent) {
 		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(GenericSourceViewer::new), parent, true) {
 			@Override
 			public void setViewerInput(IDocument document, StyleRange[] matchRangers, IFile file) {
 				this.fMatchRangers = matchRangers;
 				fSourceViewer.setInput(new Input(document, file.getFullPath())); // we have to change input type
-				applyMatchesStyles(matchRangers);
+				applyMatchesStyles();
 			}
 		};
 	}

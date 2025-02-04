@@ -59,7 +59,6 @@ import org.eclipse.jface.preference.PreferenceConverter;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
-import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.viewers.ILazyContentProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -111,7 +110,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
-import org.eclipse.text.quicksearch.ISourceViewerCreator.ISourceViewerHandle;
+import org.eclipse.text.quicksearch.ITextViewerCreator.ITextViewerHandle;
 import org.eclipse.text.quicksearch.internal.core.LineItem;
 import org.eclipse.text.quicksearch.internal.core.QuickTextQuery;
 import org.eclipse.text.quicksearch.internal.core.QuickTextQuery.TextRange;
@@ -1020,7 +1019,7 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 		}
 		var wrapper = wrapViewer(descriptor);
 		if (currentViewerWrapper != null && wrapper != null) {
-			wrapper.viewer.getTextWidget().setSize(currentViewerWrapper.viewer.getTextWidget().getSize());
+			wrapper.viewerParent.setSize(currentViewerWrapper.viewerParent.getSize());
 		}
 		currentViewerWrapper = wrapper;
 		currentViewerWrapper.showInViewersParent();
@@ -1064,11 +1063,10 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			Composite viewerParent = new Composite(viewersParent, SWT.NONE);
 			viewerParent.setLayout(new FillLayout());
 			// ask descriptor to create extension's creator, creator to provide source viewer & do additional setup
-			if (descriptor.getViewerCreator().createSourceViewer(viewerParent) instanceof ISourceViewerHandle handle
-					&& handle.getSourceViewer() instanceof ITextViewer viewer) {
+			if (descriptor.getViewerCreator().createTextViewer(viewerParent) instanceof ITextViewerHandle handle) {
 				var wrp = wrapper = new SourceViewerWrapper(descriptor, handle, viewerParent);
 				viewerWrappers.put(descriptor, wrapper);
-				viewer.getTextWidget().addControlListener(new ControlAdapter() {
+				viewerParent.addControlListener(new ControlAdapter() {
 					@Override
 					public void controlResized(ControlEvent e) {
 						if (currentViewerWrapper == wrp && !currentViewerWrapper.shouldIgnoreResize.get()) {
@@ -1591,16 +1589,14 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	private class SourceViewerWrapper {
 
 		final IViewerDescriptor descriptor;
-		final ISourceViewerHandle handle;
+		final ITextViewerHandle handle;
 		final Composite viewerParent;
-		final ITextViewer viewer;
 		final AtomicBoolean shouldIgnoreResize = new AtomicBoolean();
 
-		public SourceViewerWrapper(IViewerDescriptor descriptor, ISourceViewerHandle handle, Composite viewerParent) {
+		public SourceViewerWrapper(IViewerDescriptor descriptor, ITextViewerHandle handle, Composite viewerParent) {
 			this.descriptor = descriptor;
 			this.handle = handle;
 			this.viewerParent = viewerParent;
-			viewer = handle.getSourceViewer();
 		}
 
 		void setInput(IDocument input, StyleRange[] ranges, IFile file) {

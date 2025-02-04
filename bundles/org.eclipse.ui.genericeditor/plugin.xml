@@ -287,7 +287,7 @@
       </page>
    </extension>
    <extension
-         point="org.eclipse.text.quicksearch.sourceViewers"> 
+         point="org.eclipse.text.quicksearch.textViewers"> 
       <viewer
             class="org.eclipse.ui.internal.genericeditor.quicksearch.GenericSourceViewerCreator"
             icon="icons/full/obj16/generic_editor.png"
@@ -296,7 +296,7 @@
             linkedEditor="org.eclipse.ui.genericeditor.GenericEditor"/> 
       <contentTypeBinding
             contentTypeId="org.eclipse.core.runtime.text"
-            sourceViewerId="org.eclipse.ui.genericeditor.quicksearch.GenericEditorViewer">
+            viewerId="org.eclipse.ui.genericeditor.quicksearch.GenericEditorViewer">
       </contentTypeBinding>
    </extension>
 </plugin>
