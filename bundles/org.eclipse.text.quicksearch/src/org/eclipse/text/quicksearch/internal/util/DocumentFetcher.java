@@ -50,13 +50,17 @@ import org.eclipse.ui.texteditor.ITextEditor;
  */
 public class DocumentFetcher {
 
+	private static final ITextFileBufferManager BUFFER_MANAGER = FileBuffers.getTextFileBufferManager();
+
 	private Map<IFile, IDocument> dirtyEditors;
 
 	//Simple cache remembers the last fetched file and document.
 	private IFile lastFile = null;
 	private IDocument lastDocument = null;
+	private boolean disconnectLastDocument = false;
 
 	IDocumentProvider provider = new TextFileDocumentProvider();
+
 
 	public DocumentFetcher() {
 		if (PlatformUI.isWorkbenchRunning()) {
@@ -85,11 +89,20 @@ public class DocumentFetcher {
 		if (file.equals(lastFile)) {
 			return lastDocument;
 		}
+		if (lastDocument != null && disconnectLastDocument) {
+			try {
+				BUFFER_MANAGER.disconnect(lastFile.getFullPath(), LocationKind.IFILE, new NullProgressMonitor());
+			} catch (CoreException e) {
+				QuickSearchActivator.log(e);
+			}
+		}
 		lastFile = file;
 		lastDocument = dirtyEditors.get(file);
 		if (lastDocument==null) {
+			disconnectLastDocument = false;
 			lastDocument = getOpenDocument(file);
 			if (lastDocument==null) {
+				disconnectLastDocument = true;
 				lastDocument = getClosedDocument(file);
 			}
 		}
@@ -97,8 +110,7 @@ public class DocumentFetcher {
 	}
 
 	private IDocument getOpenDocument(IFile file) {
-		ITextFileBufferManager bufferManager= FileBuffers.getTextFileBufferManager();
-		ITextFileBuffer textFileBuffer= bufferManager.getTextFileBuffer(file.getFullPath(), LocationKind.IFILE);
+		ITextFileBuffer textFileBuffer= BUFFER_MANAGER.getTextFileBuffer(file.getFullPath(), LocationKind.IFILE);
 		if (textFileBuffer != null) {
 			return textFileBuffer.getDocument();
 		}
@@ -107,22 +119,16 @@ public class DocumentFetcher {
 
 	private IDocument getClosedDocument(IFile file) {
 		//No  in the manager yet. Try to create a temporary buffer then remove it again.
-		ITextFileBufferManager bufferManager = FileBuffers.getTextFileBufferManager();
 		IPath location = file.getFullPath(); //Must use workspace location, not fs location for API below.
 		ITextFileBuffer buffer = null;
 		try {
-			bufferManager.connect(location, LocationKind.IFILE, new NullProgressMonitor());
-			buffer = bufferManager.getTextFileBuffer(location, LocationKind.IFILE);
+			BUFFER_MANAGER.connect(location, LocationKind.IFILE, new NullProgressMonitor());
+			buffer = BUFFER_MANAGER.getTextFileBuffer(location, LocationKind.IFILE);
 			if (buffer!=null) {
 				return buffer.getDocument();
 			}
 		} catch (Throwable e) {
 			QuickSearchActivator.log(e);
-		} finally {
-			try {
-				bufferManager.disconnect(location, LocationKind.IFILE, new NullProgressMonitor());
-			} catch (CoreException e) {
-			}
 		}
 		return null;
 	}
@@ -151,8 +157,7 @@ public class DocumentFetcher {
 		if (input instanceof IFileEditorInput) {
 			IFile file= ((IFileEditorInput) input).getFile();
 			if (!result.containsKey(file)) { // take the first editor found
-				ITextFileBufferManager bufferManager= FileBuffers.getTextFileBufferManager();
-				ITextFileBuffer textFileBuffer= bufferManager.getTextFileBuffer(file.getFullPath(), LocationKind.IFILE);
+				ITextFileBuffer textFileBuffer= BUFFER_MANAGER.getTextFileBuffer(file.getFullPath(), LocationKind.IFILE);
 				if (textFileBuffer != null) {
 					// file buffer has precedence
 					result.put(file, textFileBuffer.getDocument());

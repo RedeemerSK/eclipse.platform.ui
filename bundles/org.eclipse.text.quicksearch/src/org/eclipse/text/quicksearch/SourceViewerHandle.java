@@ -24,7 +24,6 @@ import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
-import org.eclipse.jface.text.ITextPresentationListener;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
@@ -47,8 +46,8 @@ import org.eclipse.text.quicksearch.internal.ui.QuickSearchActivator;
  * <ul>
  * <li>focusing on selected quicksearch match as described in the documentation of
  * {@link ITextViewerHandle#focusMatch(IRegion, IRegion, int, IRegion) focusMatch()}
- * <li>highlighting all matches in the presented content by applying common text style on top of any syntax
- * coloring possibly done by the viewer itself (via registering {@link ITextPresentationListener})
+ * <li>highlighting all matches in the presented content by applying common text style through
+ * {@link StyledText#setStyleRange(StyleRange)} on the viewert's text widget.
  * </ul>
  * <p>
  * Highlighting the selected match line is achieved by:
@@ -72,16 +71,13 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 	protected StyleRange[] fMatchRanges = null;
 
 	/**
-	 * Creates new instance and if <code>addStylesMergingPresentationListener</code> is <code>true</code> also registers
-	 * a {@link ITextPresentationListener} to re-apply common text style to all matches in the content after any syntax
-	 * coloring done by viewer itself.
+	 * Creates new instance that will use <code>sourceViewerConfigurer</code> to create viewer under the
+	 * <code>parent</code>.
 	 *
 	 * @param sourceViewerConfigurer the viewer configurer responsible for creation & setup of the viewer
 	 * @param parent the parent SWT control for the viewer
-	 * @param addStylesMergingPresentationListener whether to register {@link ITextPresentationListener} to re-apply
-	 * common text style to all matches after viewer's syntax coloring
 	 */
-	public SourceViewerHandle(SourceViewerConfigurer<T> sourceViewerConfigurer, Composite parent, boolean addStylesMergingPresentationListener) {
+	public SourceViewerHandle(SourceViewerConfigurer<T> sourceViewerConfigurer, Composite parent) {
 		Assert.isNotNull(sourceViewerConfigurer);
 		fSourceViewer = sourceViewerConfigurer.getSourceViewer(parent);
 		Assert.isNotNull(fSourceViewer);
@@ -92,18 +88,6 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 			fChangeRulerColumn.setModel(fFixedLineChangeModel);
 		} else {
 			fFixedLineChangeModel = null;
-		}
-		if (addStylesMergingPresentationListener) {
-			fSourceViewer.addTextPresentationListener(p -> {
-				if (fMatchRanges != null && fMatchRanges.length > 0) {
-					// mergeStyleRanges() modifies passed ranges so we need to clone
-					var ranges = new StyleRange[fMatchRanges.length];
-					for (int i = 0; i < ranges.length; i++) {
-						ranges[i] = (StyleRange) fMatchRanges[i].clone();
-					}
-					p.mergeStyleRanges(ranges);
-				}
-			});
 		}
 	}
 
@@ -121,7 +105,9 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 	@Override
 	public void focusMatch(IRegion visibleRegion, IRegion revealedRange, int matchLine, IRegion matchRange) {
 		// limit content of the document that we can scroll to
-		fSourceViewer.setVisibleRegion(visibleRegion.getOffset(), visibleRegion.getLength());
+		if (!fSourceViewer.getVisibleRegion().equals(visibleRegion)) {
+			fSourceViewer.setVisibleRegion(visibleRegion.getOffset(), visibleRegion.getLength());
+		}
 		// scroll to range to be presented
 		fSourceViewer.revealRange(revealedRange.getOffset(), revealedRange.getLength());
 		// sets caret position
@@ -161,9 +147,9 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 		if (fMatchRanges == null || fMatchRanges.length == 0) {
 			return;
 		}
-		StyleRange last = fMatchRanges[fMatchRanges.length - 1];
-		fSourceViewer.getTextWidget().replaceStyleRanges(
-				fMatchRanges[0].start, last.start + last.length - fMatchRanges[0].start, fMatchRanges);
+		for (StyleRange styleRange : fMatchRanges) {
+			fSourceViewer.getTextWidget().setStyleRange(styleRange);
+		}
 	}
 
 	/**

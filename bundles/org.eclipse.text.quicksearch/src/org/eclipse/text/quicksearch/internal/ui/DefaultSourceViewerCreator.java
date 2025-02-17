@@ -30,7 +30,7 @@ public class DefaultSourceViewerCreator implements ITextViewerCreator {
 
 	@Override
 	public ITextViewerHandle createTextViewer(Composite parent) {
-		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(DefaultSourceViewer::new), parent, true);
+		return new SourceViewerHandle<>(new SourceViewerConfigurer<>(DefaultSourceViewer::new), parent);
 	}
 
 }
