@@ -15,7 +15,6 @@
  *******************************************************************************/
 package org.eclipse.text.quicksearch.internal.ui;
 
-import org.eclipse.jface.text.TextPresentation;
 import org.eclipse.jface.text.source.CompositeRuler;
 import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.swt.widgets.Composite;
@@ -30,12 +29,6 @@ class DefaultSourceViewer extends SourceViewer {
 	public DefaultSourceViewer(Composite parent, CompositeRuler verticalRules, int styles) {
 		super(parent, verticalRules, null, false, styles);
 		getTextWidget().setData(DISABLE_CSS, Boolean.TRUE);
-	}
-
-	@Override
-	public void setVisibleRegion(int start, int length) {
-		super.setVisibleRegion(start, length);
-		changeTextPresentation(new TextPresentation(), false);
 	}
 
 }

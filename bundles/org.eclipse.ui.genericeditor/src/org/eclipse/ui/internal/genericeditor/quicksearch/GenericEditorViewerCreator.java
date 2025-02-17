@@ -52,18 +52,24 @@ public class GenericEditorViewerCreator implements ITextViewerCreator {
 		private boolean fNewDocumentReconciliation;
 
 		// after focusing on other match in the same document, not all reconciliations
-		// are performed (e.g. LSP reconciliation is done only after setting new input
-		// document), so we collect all applied styles to be able to set them later
+		// are performed again (e.g. LSP reconciliation is done only after setting new
+		// input document), so we collect all applied styles to be able to set them
+		// after other match focus manually
 		private boolean fDoCollectStyles;
 		private TextPresentation fMergedStylesPresentation;
 
-		private boolean fMatchRangesPresentationScheduled = false;
+		private boolean fScheduleMatchRangesPresentation = true;
 
 		public GenericEditorSourceViewerHandle(Composite parent) {
 			super(new SourceViewerConfigurer<>(GenericEditorViewer::new), parent);
 			fSourceViewer.addTextPresentationListener(this);
 		}
 
+		/*
+		 * triggered variable number of times by a) tm4e code (possibly after setInput()
+		 * and/or focusMatch() -> fSourceViewer.setVisibleRegion() ), b) lsp4e code
+		 * (zero or more times after setInput() only)
+		 */
 		@Override
 		public void applyTextPresentation(TextPresentation textPresentation) {
 			if (fDoCollectStyles) {
@@ -74,9 +80,9 @@ public class GenericEditorViewerCreator implements ITextViewerCreator {
 				}
 				mergeStylesToTextPresentation(fMergedStylesPresentation, ranges);
 			}
-			if (!fMatchRangesPresentationScheduled) {
+			if (fScheduleMatchRangesPresentation) {
+				fScheduleMatchRangesPresentation = false;
 				fSourceViewer.getTextWidget().getDisplay().asyncExec(() -> applyMatchRangesTextPresentation());
-				fMatchRangesPresentationScheduled = true;
 			}
 		}
 
@@ -92,15 +98,8 @@ public class GenericEditorViewerCreator implements ITextViewerCreator {
 		}
 
 		private void applyMatchRangesTextPresentation() {
-			for (StyleRange styleRange : fMatchRanges) {
-				var presentation = new TextPresentation(1);
-				presentation.addStyleRange((StyleRange) styleRange.clone());
-				// we need to do this one by one to avoid replacing already applied styles
-				// inside region covering all match ranges (between 1st and last match)
-				fSourceViewer.changeTextPresentation(presentation, false);
-
-			}
-			fMatchRangesPresentationScheduled = false;
+			applyMatchesStyles();
+			fScheduleMatchRangesPresentation = true;
 
 		}
 
@@ -119,15 +118,14 @@ public class GenericEditorViewerCreator implements ITextViewerCreator {
 				super.focusMatch(visibleRegion, revealedRange, matchLine, matchRange);
 			} else {
 				fDoCollectStyles = false;
-				fMatchRangesPresentationScheduled = true;
+				fScheduleMatchRangesPresentation = false; // temporary disable scheduling match ranges presentation
 				super.focusMatch(visibleRegion, revealedRange, matchLine, matchRange);
 				// now apply collected styles
-				fMatchRangesPresentationScheduled = false; // and then all matches styles afterwards
 				fSourceViewer.changeTextPresentation(fMergedStylesPresentation, false);
+				applyMatchRangesTextPresentation(); // also enables scheduling match ranges presentation
 				fDoCollectStyles = true;
 			}
 		}
-
 	}
 
 	static class Input implements ITypedElement, IEncodedStreamContentAccessor {

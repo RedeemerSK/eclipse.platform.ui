@@ -25,6 +25,7 @@ import org.eclipse.jface.text.CursorLinePainter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
+import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModelListener;
@@ -103,6 +104,12 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 	}
 
 	@Override
+	public void setViewerInput(IDocument document, StyleRange[] allMatchesStyles, IFile file) {
+		fMatchRanges = allMatchesStyles;
+		fSourceViewer.setInput(document);
+	}
+
+	@Override
 	public void focusMatch(IRegion visibleRegion, IRegion revealedRange, int matchLine, IRegion matchRange) {
 		// limit content of the document that we can scroll to
 		if (!fSourceViewer.getVisibleRegion().equals(visibleRegion)) {
@@ -127,19 +134,13 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 			fFixedLineChangeModel.selectedMatchLine = matchLine;
 			fChangeRulerColumn.redraw();
 		}
-	}
-
-	@Override
-	public void setViewerInput(IDocument document, StyleRange[] allMatchesStyles, IFile file) {
-		fMatchRanges = allMatchesStyles;
-		fSourceViewer.setInput(document);
-		applyMatchesStyles();
 
 	}
 
 	/**
 	 * Applies all matches highlighting styles previously passed to
-	 * {@link #setViewerInput(IDocument, StyleRange[], IFile) setViewerInput()} method(s).
+	 * {@link #setViewerInput(IDocument, StyleRange[], IFile) setViewerInput()} method considering projection of
+	 * model (document) ranges to source viewer's text widget ranges.
 	 *
 	 * @see #setViewerInput(IDocument, StyleRange[], IFile)
 	 */
@@ -148,8 +149,21 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 			return;
 		}
 		for (StyleRange styleRange : fMatchRanges) {
-			fSourceViewer.getTextWidget().setStyleRange(styleRange);
+			if (modelRange2WidgetStyleRange(styleRange) instanceof StyleRange range) {
+				fSourceViewer.getTextWidget().setStyleRange(range);
+			}
 		}
+	}
+
+	private StyleRange modelRange2WidgetStyleRange(StyleRange range) {
+		IRegion region= fSourceViewer.modelRange2WidgetRange(new Region(range.start, range.length));
+		if (region != null) {
+			StyleRange result= (StyleRange) range.clone();
+			result.start= region.getOffset();
+			result.length= region.getLength();
+			return result;
+		}
+		return null;
 	}
 
 	/**
