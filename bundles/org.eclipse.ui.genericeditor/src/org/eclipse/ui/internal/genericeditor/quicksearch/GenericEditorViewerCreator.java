@@ -15,26 +15,25 @@
  *******************************************************************************/
 package org.eclipse.ui.internal.genericeditor.quicksearch;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
-import org.eclipse.compare.IEncodedStreamContentAccessor;
-import org.eclipse.compare.ITypedElement;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextPresentationListener;
 import org.eclipse.jface.text.TextPresentation;
+import org.eclipse.jface.text.source.CompositeRuler;
+import org.eclipse.jface.text.source.SourceViewer;
 import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.text.quicksearch.ITextViewerCreator;
 import org.eclipse.text.quicksearch.SourceViewerConfigurer;
 import org.eclipse.text.quicksearch.SourceViewerHandle;
+import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.ui.internal.genericeditor.ExtensionBasedTextViewerConfiguration;
+import org.eclipse.ui.internal.genericeditor.GenericEditorPlugin;
+import org.eclipse.ui.texteditor.ChainedPreferenceStore;
 
 /**
  * Creates quicksearch text viewer handles that use
@@ -128,39 +127,29 @@ public class GenericEditorViewerCreator implements ITextViewerCreator {
 		}
 	}
 
-	static class Input implements ITypedElement, IEncodedStreamContentAccessor {
+	static class GenericEditorViewer extends SourceViewer {
 
-		private final IPath filePath;
-		private final byte[] content;
-
-		public Input(IDocument document, IPath filePath) {
-			this.filePath = filePath;
-			this.content = document.get().getBytes(StandardCharsets.UTF_8);
+		public GenericEditorViewer(Composite parent, CompositeRuler verticalRuler, int styles) {
+			super(parent, verticalRuler, styles);
 		}
 
 		@Override
-		public InputStream getContents() throws CoreException {
-			return new ByteArrayInputStream(content);
+		public void refresh() {
+			System.out.println("LALALALALALAL"); //$NON-NLS-1$
+			// empty implementation
 		}
 
 		@Override
-		public String getCharset() throws CoreException {
-			return StandardCharsets.UTF_8.name();
-		}
+		public void setInput(Object input) {
+			unconfigure();
 
-		@Override
-		public String getName() {
-			return filePath.lastSegment();
-		}
-
-		@Override
-		public Image getImage() {
-			return null;
-		}
-
-		@Override
-		public String getType() {
-			return filePath.getFileExtension();
+			if (input instanceof IDocument doc) {
+				setDocument(doc);
+				var configuration = new ExtensionBasedTextViewerConfiguration(null,
+						new ChainedPreferenceStore(new IPreferenceStore[] { EditorsUI.getPreferenceStore(),
+								GenericEditorPlugin.getDefault().getPreferenceStore() }));
+				configure(configuration);
+			}
 		}
 
 	}

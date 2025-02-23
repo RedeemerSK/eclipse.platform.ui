@@ -967,6 +967,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 			blankImage.dispose();
 			blankImage = null;
 		}
+		if (documents != null) {
+			documents.destroy();
+		}
 	}
 
 	private void createDetailsArea(Composite parent) {
@@ -1613,9 +1616,9 @@ public class QuickSearchDialog extends SelectionStatusDialog {
 	}
 
 	private class ViewerSelectionAction extends Action {
-		
+
 		final IViewerDescriptor descriptor;
-		
+
 		public ViewerSelectionAction(String text, IViewerDescriptor descriptor, LineItem selectedItem) {
 			super(text, IAction.AS_RADIO_BUTTON);
 			this.descriptor = descriptor;

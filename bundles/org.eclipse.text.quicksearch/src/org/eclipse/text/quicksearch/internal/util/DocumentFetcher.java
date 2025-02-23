@@ -57,7 +57,7 @@ public class DocumentFetcher {
 	//Simple cache remembers the last fetched file and document.
 	private IFile lastFile = null;
 	private IDocument lastDocument = null;
-	private boolean disconnectLastDocument = false;
+	private boolean disconnectLastFile = false;
 
 	IDocumentProvider provider = new TextFileDocumentProvider();
 
@@ -86,23 +86,15 @@ public class DocumentFetcher {
 	 *    buffer nor corresponds to an existing file in the workspace.
 	 */
 	public IDocument getDocument(IFile file) {
-		if (file.equals(lastFile)) {
+		if (lastFile != null && lastFile.equals(file)) {
 			return lastDocument;
 		}
-		if (lastDocument != null && disconnectLastDocument) {
-			try {
-				BUFFER_MANAGER.disconnect(lastFile.getFullPath(), LocationKind.IFILE, new NullProgressMonitor());
-			} catch (CoreException e) {
-				QuickSearchActivator.log(e);
-			}
-		}
+		disconnectLastFile();
 		lastFile = file;
 		lastDocument = dirtyEditors.get(file);
 		if (lastDocument==null) {
-			disconnectLastDocument = false;
 			lastDocument = getOpenDocument(file);
 			if (lastDocument==null) {
-				disconnectLastDocument = true;
 				lastDocument = getClosedDocument(file);
 			}
 		}
@@ -118,11 +110,13 @@ public class DocumentFetcher {
 	}
 
 	private IDocument getClosedDocument(IFile file) {
-		//No  in the manager yet. Try to create a temporary buffer then remove it again.
+		//No  in the manager yet. Try to create a temporary buffer - required for some extensions to work
+		// (will get removed once not used anymore)
 		IPath location = file.getFullPath(); //Must use workspace location, not fs location for API below.
 		ITextFileBuffer buffer = null;
 		try {
 			BUFFER_MANAGER.connect(location, LocationKind.IFILE, new NullProgressMonitor());
+			disconnectLastFile = true;
 			buffer = BUFFER_MANAGER.getTextFileBuffer(location, LocationKind.IFILE);
 			if (buffer!=null) {
 				return buffer.getDocument();
@@ -170,6 +164,21 @@ public class DocumentFetcher {
 				}
 			}
 		}
+	}
+
+	private void disconnectLastFile() {
+		if (disconnectLastFile && lastFile != null) {
+			disconnectLastFile = false;
+			try {
+				BUFFER_MANAGER.disconnect(lastFile.getFullPath(), LocationKind.IFILE, new NullProgressMonitor());
+			} catch (CoreException e) {
+				QuickSearchActivator.log(e);
+			}
+		}
+	}
+
+	public void destroy() {
+		disconnectLastFile();
 	}
 
 }
