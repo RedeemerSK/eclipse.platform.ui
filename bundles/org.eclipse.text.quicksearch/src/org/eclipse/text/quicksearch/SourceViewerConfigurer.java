@@ -53,8 +53,8 @@ import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
 
 /**
- * Factory used by {@link SourceViewerHandle} responsible for creation and necessary setup of source viewers so that
- * they provide common aspects of quicksearch text viewers:
+ * Implementation of source viewer factory for {@link SourceViewerHandle} that creates and does necessary setup of source viewer so that
+ * it provides common aspects of quicksearch text viewers:
  * <ul>
  * <li>vertical ruler with line numbers supporting selected match line number highlighting
  * <li>selected match line highlighting
@@ -65,9 +65,10 @@ import org.eclipse.ui.texteditor.SourceViewerDecorationSupport;
  * Actual source viewer instance creation is delegated to provided {@link ISourceViewerCreator}.
  * @since 1.3
  */
-public class SourceViewerConfigurer<T extends SourceViewer> {
+public class SourceViewerConfigurer<T extends SourceViewer> implements ISourceViewerConfigurer<T> {
 
 	public static final int VIEWER_STYLES = SWT.H_SCROLL | SWT.V_SCROLL | SWT.MULTI | SWT.BORDER | SWT.FULL_SELECTION | SWT.READ_ONLY;
+	private static final String DISABLE_CSS = "org.eclipse.e4.ui.css.disabled"; //$NON-NLS-1$
 
 	private final ISourceViewerCreator<T> fViewerCreator;
 	private final IPropertyChangeListener fPropertyChangeListener = this::handlePreferenceStoreChanged;
@@ -95,40 +96,27 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 	 * @param store the preference store to use for configuration
 	 */
 	public SourceViewerConfigurer(ISourceViewerCreator<T> viewerCreator, IPreferenceStore store) {
-		Assert.isNotNull(store);
 		Assert.isNotNull(viewerCreator);
+		Assert.isNotNull(store);
 		fViewerCreator = viewerCreator;
 		fPreferenceStore = store;
 	}
 
-	/**
-	 * Creates, configures and returns source viewer that provides common aspects of quicksearch text viewers. Delegates
-	 * source viewer creation to {@link ISourceViewerCreator} provided on initialization.
-	 * @param parent the parent SWT control for the viewer
-	 * @return configured source viewer
-	 * @see ISourceViewerCreator
-	 */
-	protected T getSourceViewer(Composite parent) {
+	@Override
+	public T getSourceViewer(Composite parent) {
 		fSourceViewer = fViewerCreator.createSourceViewer(parent, fVerticalRuler, VIEWER_STYLES);
 		Assert.isNotNull(fSourceViewer);
-		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
 		initialize();
 		return fSourceViewer;
 	}
 
-	/**
-	 * Returns change ruler column installed to the viewer.
-	 * @return viewer's change ruler column
-	 */
-	protected IChangeRulerColumn getChangeRulerColumn() {
+	@Override
+	public IChangeRulerColumn getChangeRulerColumn() {
 		return fLineNumberRulerColumn;
 	}
 
-	/**
-	 * Returns fixed line highlighter installed to the viewer.
-	 * @return viewer's fixed line highlighter
-	 */
-	protected FixedLineHighlighter getMatchLineHighlighter() {
+	@Override
+	public FixedLineHighlighter getMatchLineHighlighter() {
 		return fMatchLineHighlighter;
 	}
 
@@ -136,15 +124,17 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 	 * Initializes created source viewer to provide common aspects of quicksearch text viewers.
 	 */
 	protected void initialize() {
+		fSourceViewer.getTextWidget().setData(DISABLE_CSS, Boolean.TRUE);
 		fPreferenceStore.addPropertyChangeListener(fPropertyChangeListener);
+
+		fSourceViewer.addVerticalRulerColumn(fLineNumberRulerColumn);
 
 		initializeColors();
 		initializeFont();
 
 		fSourceViewer.getTextWidget().addLineBackgroundListener(fMatchLineHighlighter);
 
-		var currentLineDecorations = new SourceViewerDecorationSupport(fSourceViewer, null, null, EditorsUI.getSharedTextColors());
-		currentLineDecorations.setCursorLinePainterPreferenceKeys(EDITOR_CURRENT_LINE, EDITOR_CURRENT_LINE_COLOR);
+		var currentLineDecorations = getSourceViewerDecorationSupport();
 		currentLineDecorations.install(fPreferenceStore);
 
 		updateContributedRulerColumns((CompositeRuler) fVerticalRuler);
@@ -153,6 +143,16 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 			currentLineDecorations.uninstall();
 			fPreferenceStore.removePropertyChangeListener(fPropertyChangeListener);
 		});
+	}
+
+	/**
+	 * Creates decoration support for the created source viewer. Default implementation returns {@link SourceViewerDecorationSupport}.
+	 * @return decoration support for the source viewer
+	 */
+	protected SourceViewerDecorationSupport getSourceViewerDecorationSupport() {
+		var support = new SourceViewerDecorationSupport(fSourceViewer, null, null, EditorsUI.getSharedTextColors());
+		support.setCursorLinePainterPreferenceKeys(EDITOR_CURRENT_LINE, EDITOR_CURRENT_LINE_COLOR);
+		return support;
 	}
 
 	/**
@@ -200,12 +200,11 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 			fLineNumberRulerColumn.setForeground(sharedColors.getColor(lineNumbersColor));
 
 			// ----------- line highlight (background) color --------------------
-			color = sharedColors.getColor(getColorFromStore(EditorsUI.getPreferenceStore(), EDITOR_CURRENT_LINE_COLOR));
+			color = sharedColors.getColor(getColorFromStore(store, EDITOR_CURRENT_LINE_COLOR));
 			fLineNumberRulerColumn.setChangedColor(sharedColors.getColor(reverseInterpolateDiffPainterColor(textWidget.getBackground(), color)));
 			if (fMatchLineHighlighter != null) {
 				fMatchLineHighlighter.setHighlightColor(color);
 			}
-
 		}
 	}
 
@@ -217,7 +216,7 @@ public class SourceViewerConfigurer<T extends SourceViewer> {
 	 * @return color to set to diff painter to make it to draw annotation with desired color
 	 */
 	@SuppressWarnings("restriction")
-	protected RGB reverseInterpolateDiffPainterColor(Color backgroundColor, Color finalColor) {
+	public static RGB reverseInterpolateDiffPainterColor(Color backgroundColor, Color finalColor) {
 		RGB baseRGB= finalColor.getRGB();
 		RGB background= backgroundColor.getRGB();
 

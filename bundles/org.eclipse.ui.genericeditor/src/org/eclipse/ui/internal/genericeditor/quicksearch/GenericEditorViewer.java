@@ -42,7 +42,7 @@ public class GenericEditorViewer extends SourceViewer {
 
 		if (input instanceof IDocument doc) {
 			setDocument(doc);
-			ExtensionBasedTextViewerConfiguration configuration = new ExtensionBasedTextViewerConfiguration(null,
+			var configuration = new ExtensionBasedTextViewerConfiguration(null,
 					new ChainedPreferenceStore(new IPreferenceStore[] { EditorsUI.getPreferenceStore(),
 							GenericEditorPlugin.getDefault().getPreferenceStore() }));
 			configure(configuration);

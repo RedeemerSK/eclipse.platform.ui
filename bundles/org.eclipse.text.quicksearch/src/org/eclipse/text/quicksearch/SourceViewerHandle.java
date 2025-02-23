@@ -78,7 +78,7 @@ public class SourceViewerHandle<T extends SourceViewer> implements ITextViewerHa
 	 * @param sourceViewerConfigurer the viewer configurer responsible for creation & setup of the viewer
 	 * @param parent the parent SWT control for the viewer
 	 */
-	public SourceViewerHandle(SourceViewerConfigurer<T> sourceViewerConfigurer, Composite parent) {
+	public SourceViewerHandle(ISourceViewerConfigurer<T> sourceViewerConfigurer, Composite parent) {
 		Assert.isNotNull(sourceViewerConfigurer);
 		fSourceViewer = sourceViewerConfigurer.getSourceViewer(parent);
 		Assert.isNotNull(fSourceViewer);
